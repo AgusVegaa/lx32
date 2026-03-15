@@ -16,6 +16,171 @@ This README provides a comprehensive guide to the LX32 project documentation. It
 
 ---
 
+## Repository structure
+
+```
+.
+├── Makefile
+├── README.md
+├── docs
+│   ├── README.md
+│   ├── golden_model
+│   │   ├── arch
+│   │   │   ├── generic
+│   │   │   │   └── generic_template_arch.md
+│   │   │   ├── lx32_alu_pkg.md
+│   │   │   ├── lx32_arch_pkg.md
+│   │   │   ├── lx32_branch_pkg.md
+│   │   │   ├── lx32_decode_pkg.md
+│   │   │   ├── lx32_isa_pkg.md
+│   │   │   └── mod.md
+│   │   ├── core
+│   │   │   ├── alu.md
+│   │   │   ├── branch_unit.md
+│   │   │   ├── control_unit.md
+│   │   │   ├── generic
+│   │   │   │   └── generic_template_core.md
+│   │   │   ├── imm_gen.md
+│   │   │   ├── lsu.md
+│   │   │   ├── lx32_system.md
+│   │   │   ├── memory_sim.md
+│   │   │   ├── mod.md
+│   │   │   ├── reg_generic.md
+│   │   │   └── register_file.md
+│   │   ├── source
+│   │   │   ├── bridge.md
+│   │   │   ├── cli.md
+│   │   │   ├── generic
+│   │   │   │   └── generic_template_src.md
+│   │   │   ├── lib.md
+│   │   │   ├── main.md
+│   │   │   ├── program_generator.md
+│   │   │   ├── shrinking.md
+│   │   │   └── test_runner.md
+│   │   └── tests
+│   │       ├── common
+│   │       │   └── mod.md
+│   │       ├── generic
+│   │       │   └── generic_template_tests.md
+│   │       ├── test_alu.md
+│   │       ├── test_branch_unit.md
+│   │       ├── test_control_unit.md
+│   │       ├── test_imm_gen.md
+│   │       ├── test_long_programs.md
+│   │       ├── test_lsu.md
+│   │       ├── test_lx32_system.md
+│   │       ├── test_memory_sim.md
+│   │       ├── test_reg_generic.md
+│   │       └── test_register_file.md
+│   ├── rtl
+│   │   ├── arch
+│   │   │   ├── generic
+│   │   │   │   └── generic_template_arch.md
+│   │   │   ├── lx32_alu_pkg.md
+│   │   │   ├── lx32_arch_pkg.md
+│   │   │   ├── lx32_branch_pkg.md
+│   │   │   ├── lx32_decode_pkg.md
+│   │   │   └── lx32_isa_pkg.md
+│   │   └── core
+│   │       ├── alu.md
+│   │       ├── branch_unit.md
+│   │       ├── control_unit.md
+│   │       ├── generic
+│   │       │   └── generic_template_core.md
+│   │       ├── imm_gen.md
+│   │       ├── lsu.md
+│   │       ├── lx32_system.md
+│   │       ├── memory_sim.md
+│   │       ├── reg_generic.md
+│   │       └── register_file.md
+│   └── tools
+│       ├── build.md
+│       ├── demo.md
+│       ├── setup.md
+│       └── validator_make_usage.md
+├── rtl
+│   ├── arch
+│   │   ├── lx32_alu_pkg.sv
+│   │   ├── lx32_arch_pkg.sv
+│   │   ├── lx32_branch_pkg.sv
+│   │   ├── lx32_decode_pkg.sv
+│   │   └── lx32_isa_pkg.sv
+│   └── core
+│       ├── alu.sv
+│       ├── branch_unit.sv
+│       ├── control_unit.sv
+│       ├── imm_gen.sv
+│       ├── lsu.sv
+│       ├── lx32_system.sv
+│       ├── memory_sim.sv
+│       ├── reg_generic.sv
+│       └── register_file.sv
+├── tb
+│   ├── arch
+│   │   ├── branches_pkg_tb.sv
+│   │   ├── lx32_arch_pkg_tb.sv
+│   │   └── lx32_pkg_tb.sv
+│   └── core
+│       ├── alu_tb.sv
+│       ├── branch_unit_tb.sv
+│       ├── control_unit_tb.sv
+│       ├── imm_gen_tb.sv
+│       ├── lsu_tb.sv
+│       ├── lx32_system_tb.sv
+│       ├── memory_sim_tb.sv
+│       ├── reg_generic_tb.sv
+│       └── register_file_tb.sv
+└── tools
+    ├── lx32_validator
+    │   ├── Cargo.lock
+    │   ├── Cargo.toml
+    │   ├── build.rs
+    │   ├── demo.sh
+    │   ├── src
+    │   │   ├── bridge.cpp
+    │   │   ├── cli.rs
+    │   │   ├── lib.rs
+    │   │   ├── main.rs
+    │   │   ├── models
+    │   │   │   ├── arch
+    │   │   │   │   ├── lx32_alu_pkg.rs
+    │   │   │   │   ├── lx32_arch_pkg.rs
+    │   │   │   │   ├── lx32_branch_pkg.rs
+    │   │   │   │   ├── lx32_decode_pkg.rs
+    │   │   │   │   ├── lx32_isa_pkg.rs
+    │   │   │   │   └── mod.rs
+    │   │   │   ├── core
+    │   │   │   │   ├── alu.rs
+    │   │   │   │   ├── branch_unit.rs
+    │   │   │   │   ├── control_unit.rs
+    │   │   │   │   ├── imm_gen.rs
+    │   │   │   │   ├── lsu.rs
+    │   │   │   │   ├── lx32_system.rs
+    │   │   │   │   ├── memory_sim.rs
+    │   │   │   │   ├── mod.rs
+    │   │   │   │   ├── reg_generic.rs
+    │   │   │   │   └── register_file.rs
+    │   │   │   └── mod.rs
+    │   │   ├── program_generator.rs
+    │   │   ├── shrinking.rs
+    │   │   └── test_runner.rs
+    │   └── tests
+    │       ├── common
+    │       │   └── mod.rs
+    │       ├── test_alu.rs
+    │       ├── test_branch_unit.rs
+    │       ├── test_control_unit.rs
+    │       ├── test_imm_gen.rs
+    │       ├── test_long_programs.rs
+    │       ├── test_lsu.rs
+    │       ├── test_lx32_system.rs
+    │       ├── test_memory_sim.rs
+    │       ├── test_reg_generic.rs
+    │       └── test_register_file.rs
+    └── setup.sh
+```
+---
+
 ## Golden Model Documentation
 ### Architecture Packages (`golden_model/arch/`)
 - **lx32_alu_pkg.md**: Canonical ALU operation types, enums, and constants. Used for ALU, control, decode. Mirrors RTL.
