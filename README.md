@@ -1,4 +1,7 @@
 # lx32
+> **"Most computers are black boxes. I'm building a glass one."**
+
+Most people take their CPU for granted. I decided to build my own from the first transistor up to a full LLVM backend. No shortcuts, no black boxes, just pure logic and 1.1 billion tests to prove it works.
 
 **lx32** is the first phase of a long-term project to build a complete computer from scratch — processor, compiler, operating system, and hardware — with no compromises on correctness, documentation, or verification.
 
