@@ -1,7 +1,7 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// This file provides RISC-V specific target descriptions.
+// This file provides LX32 specific target descriptions.
 //
 //===----------------------------------------------------------------------===//
 #ifndef LLVM_LIB_TARGET_LX32_MCTARGETDESC_LX32MCTARGETDESC_H
