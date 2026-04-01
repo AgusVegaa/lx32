@@ -4,6 +4,16 @@
 // SPDX-License-Identifier: MIT
 //
 //===----------------------------------------------------------------------===//
+//
+// This file defines the LX32 register file: 32 general-purpose 32-bit
+// registers (X0-X31), their ABI aliases, two register classes (GPR and
+// GPRNOX0), and an alternate-name index for ABI names.
+//
+//===----------------------------------------------------------------------===//
+
+//===----------------------------------------------------------------------===//
+// Register base class
+//===----------------------------------------------------------------------===//
 
 let Namespace = "LX32" in {
 class LX32Reg<bits<5> Enc, string n, list<string> alt = []> : Register<n> {
@@ -12,8 +22,35 @@ class LX32Reg<bits<5> Enc, string n, list<string> alt = []> : Register<n> {
 }
 }
 
+//===----------------------------------------------------------------------===//
+// Alternate name index
+//
+// ABIRegAltName provides the RISC-V ABI aliases (zero, ra, sp, ...).
+// FallbackRegAltNameIndex = NoRegAltName means that registers without an
+// explicit ABI alias fall back to the canonical hardware name.
+//===----------------------------------------------------------------------===//
+
 let FallbackRegAltNameIndex = NoRegAltName in
 def ABIRegAltName : RegAltNameIndex;
+
+//===----------------------------------------------------------------------===//
+// Register definitions
+//
+// Registers are listed in hardware-encoding order (X0-X31).
+// ABI aliases follow the RISC-V ILP32 convention.
+//   X0        : hardwired zero — marked isConstant so the allocator never
+//               assigns it as a destination.
+//   X1  (ra)  : return address
+//   X2  (sp)  : stack pointer
+//   X3  (gp)  : global pointer
+//   X4  (tp)  : thread pointer
+//   X5-X7     : temporaries t0-t2 (caller-saved)
+//   X8  (s0/fp): frame pointer / callee-saved s0
+//   X9  (s1)  : callee-saved
+//   X10-X17   : arguments a0-a7 / return values a0-a1
+//   X18-X27   : callee-saved s2-s11
+//   X28-X31   : temporaries t3-t6 (caller-saved)
+//===----------------------------------------------------------------------===//
 
 let RegAltNameIndices = [ABIRegAltName] in {
   let isConstant = true in
@@ -52,6 +89,25 @@ let RegAltNameIndices = [ABIRegAltName] in {
   def X31 : LX32Reg<31, "x31", ["t6"]>;
 }
 
+//===----------------------------------------------------------------------===//
+// Register classes
+//
+// GPR — all 32 registers, ordered by allocation priority:
+//   1. Argument / return-value registers (a0-a7): highest priority so that
+//      the allocator places values in calling-convention registers first,
+//      minimizing moves at call boundaries.
+//   2. Caller-saved temporaries (t0-t2, t3-t6): free to use without saving.
+//   3. Callee-saved registers (s0-s11): usable but must be saved/restored.
+//   4. Special pointers (ra, sp, gp, tp): the allocator avoids these by
+//      convention; they are reserved in LX32RegisterInfo::getReservedRegs.
+//   5. Zero register (x0): listed last so the allocator never picks it as
+//      a destination; it is also marked isConstant above.
+//
+// GPRNOX0 — same as GPR minus X0. Used for instruction operands that must
+//   not target the zero register (e.g., JALR destination when used as call).
+//   X0 is excluded via (sub GPR, X0) so TableGen keeps allocation order.
+//===----------------------------------------------------------------------===//
+
 def GPR : RegisterClass<"LX32", [i32], 32, (add
   // Arguments and return values — highest priority
   X10, X11, X12, X13, X14, X15, X16, X17,
@@ -61,7 +117,7 @@ def GPR : RegisterClass<"LX32", [i32], 32, (add
   // Callee-saved
   X8, X9,
   X18, X19, X20, X21, X22, X23, X24, X25, X26, X27,
-  // Special pointers — allocator avoids these
+  // Special pointers — allocator avoids these (reserved in RegisterInfo)
   X1, X2, X3, X4,
   // Zero register — never allocatable
   X0
