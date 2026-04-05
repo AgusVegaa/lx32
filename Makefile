@@ -5,6 +5,7 @@
 SHELL := /bin/sh
 VERILATOR ?= verilator
 VERILATOR_FLAGS ?= -Wall -Wno-fatal --binary --trace --trace-structs -O2 --timing
+SIM_ARGS ?= +trace
 
 OUTDIR := .sim
 ROOT_DIR := $(CURDIR)
@@ -15,7 +16,7 @@ RTL_CORE := rtl/core
 RTL_ARCH := rtl/arch
 TB_CORE  := tb/core
 
-.PHONY: help sim clean setup librust validate validate-verbose validate-long validate-long-verbose validate-seed validate-long-custom validate-help
+.PHONY: help sim clean setup librust validate validate-verbose validate-long validate-long-verbose validate-seed validate-long-custom validate-help coq-only coq-check coq-local coq-clean formal-validate closure-proof formal-help formal-clean formal-sva formal-sva-control formal-sva-rf formal-lec formal-lec-alu formal-lec-branch formal-all
 
 # Verilator include path detection (Linux vs macOS)
 UNAME_S := $(shell uname -s)
@@ -64,16 +65,25 @@ sim: ## Run a specific testbench (usage: make sim TB=lx32_system)
 		-o $(TB)_sim
 
 	@echo "Running simulation..."
-	./$(OUTDIR)/$(TB)/$(TB)_sim +trace
+	./$(OUTDIR)/$(TB)/$(TB)_sim $(SIM_ARGS)
 
 clean: ## Remove simulation artifacts
 	@rm -rf $(OUTDIR)
+	@rm -rf $(FORMAL_OUT)
 
 # ======================
 # LX32 Validator Targets
 # ======================
 
 VALIDATOR_BIN := $(VALIDATOR_DIR)/target/release/lx32_validator
+COQ_SPEC_DIR ?= ..
+COQ_LOCAL_DIR := tools/lx32_formal
+COQ_LOCAL_FILES := LX32_Arch.v LX32_ALU.v LX32_Branch.v LX32_Decode.v LX32_Control.v LX32_RegisterFile.v LX32_Step.v LX32_Safety.v
+FORMAL_OUT := .formal
+SVA_DIR := $(COQ_LOCAL_DIR)/sva
+LEC_DIR := $(COQ_LOCAL_DIR)/lec
+SBY ?= sby
+YOSYS ?= yosys
 SEED ?=
 NUM ?=10
 LEN ?=500
@@ -99,16 +109,110 @@ validate-long: ## Run only long-form program tests
 validate-long-verbose: ## Run long tests with details
 	cargo run --release --manifest-path $(VALIDATOR_DIR)/Cargo.toml -- --long-only --verbose
 
-validate-seed: ## Run tests with a specific seed (usage: make validate-seed SEED=123)
-	cargo run --release --manifest-path $(VALIDATOR_DIR)/Cargo.toml -- $(if $(SEED),--seed $(SEED))
+validate-seed: ## Run deterministic tests with required seed (usage: make validate-seed SEED=123)
+	@if [ -z "$(SEED)" ]; then echo "ERROR: validate-seed requires SEED=<n>"; exit 2; fi
+	cargo run --release --manifest-path $(VALIDATOR_DIR)/Cargo.toml -- --seed $(SEED)
 
 validate-long-custom: ## Custom long test (usage: make validate-long-custom NUM=10 LEN=1000)
 	cargo run --release --manifest-path $(VALIDATOR_DIR)/Cargo.toml -- --long-only --num-programs $(NUM) --program-length $(LEN) $(if $(SEED),--seed $(SEED)) $(if $(VERBOSE),--verbose)
 
 validate-help: ## Show validator CLI options
 	cargo run --release --manifest-path $(VALIDATOR_DIR)/Cargo.toml -- --help
+
+coq-local: ## Build local Coq specs (if present in this repo)
+	@$(MAKE) --no-print-directory coq-clean
+	@if [ ! -d "$(COQ_LOCAL_DIR)" ] || [ ! -f "$(COQ_LOCAL_DIR)/$(firstword $(COQ_LOCAL_FILES))" ]; then \
+		echo "No local Coq specs found in $(COQ_LOCAL_DIR); skipping coq-local."; \
+		exit 0; \
+	fi
+	@if ! command -v coqc >/dev/null 2>&1; then \
+		echo "ERROR: coqc not found. Install Coq to run coq-local."; \
+		exit 2; \
+	fi
+	cd "$(COQ_LOCAL_DIR)" && coqc LX32_Arch.v
+	cd "$(COQ_LOCAL_DIR)" && coqc LX32_ALU.v
+	cd "$(COQ_LOCAL_DIR)" && coqc LX32_Branch.v
+	cd "$(COQ_LOCAL_DIR)" && coqc LX32_Decode.v
+	cd "$(COQ_LOCAL_DIR)" && coqc LX32_Control.v
+	cd "$(COQ_LOCAL_DIR)" && coqc LX32_RegisterFile.v
+	cd "$(COQ_LOCAL_DIR)" && coqc LX32_Step.v
+	cd "$(COQ_LOCAL_DIR)" && coqc LX32_Safety.v
+
+coq-clean: ## Remove Coq build artifacts (local + accidental root artifacts)
+	@rm -f "$(COQ_LOCAL_DIR)"/*.vo "$(COQ_LOCAL_DIR)"/*.vok "$(COQ_LOCAL_DIR)"/*.vos "$(COQ_LOCAL_DIR)"/*.glob
+	@rm -f "$(COQ_LOCAL_DIR)"/.*.aux "$(COQ_LOCAL_DIR)"/.lia.cache
+	@rm -f LX32_*.vo LX32_*.vok LX32_*.vos LX32_*.glob .LX32_*.aux .lia.cache
+
+coq-only: ## Build Coq specification in parent workspace
+	@if [ -f "$(COQ_SPEC_DIR)/Makefile" ] && [ "$(COQ_SPEC_DIR)" != "." ]; then \
+		$(MAKE) -C $(COQ_SPEC_DIR); \
+	else \
+		$(MAKE) coq-local; \
+	fi
+
+coq-check: ## Clean + rebuild Coq specification in parent workspace
+	@if [ -f "$(COQ_SPEC_DIR)/Makefile" ] && [ "$(COQ_SPEC_DIR)" != "." ]; then \
+		$(MAKE) -C $(COQ_SPEC_DIR) clean; \
+		$(MAKE) -C $(COQ_SPEC_DIR); \
+	else \
+		$(MAKE) coq-local; \
+	fi
+
+formal-validate: ## Run Coq check + deterministic validator run (usage: make formal-validate SEED=42)
+	@if [ -z "$(SEED)" ]; then echo "ERROR: formal-validate requires SEED=<n>"; exit 2; fi
+	$(MAKE) coq-check
+	$(MAKE) validate-seed SEED=$(SEED)
+
+closure-proof: ## Full closure gate: Coq + formal HW + bridge + deterministic validator (usage: make closure-proof SEED=42)
+	@if [ -z "$(SEED)" ]; then echo "ERROR: closure-proof requires SEED=<n>"; exit 2; fi
+	$(MAKE) coq-local
+	$(MAKE) formal-clean
+	$(MAKE) formal-all
+	$(MAKE) librust
+	$(MAKE) validate-seed SEED=$(SEED)
+
+formal-help: ## Show hardware formal targets (SVA+BMC and LEC)
+	@echo "formal-sva           - Run all SVA bounded model checks"
+	@echo "formal-sva-control   - Run control unit SVA checks"
+	@echo "formal-sva-rf        - Run register file SVA checks"
+	@echo "formal-lec           - Run all Yosys equivalence checks"
+	@echo "formal-lec-alu       - Run ALU equivalence check"
+	@echo "formal-lec-branch    - Run Branch Unit equivalence check"
+	@echo "formal-all           - Run both SVA and LEC suites"
+	@echo "formal-clean         - Remove formal run artifacts"
+	@echo "closure-proof        - Coq + formal HW + deterministic validator"
+
+formal-clean: ## Remove formal verification artifacts
+	@rm -rf $(FORMAL_OUT)
+
+formal-sva: formal-sva-control formal-sva-rf ## Run all SVA bounded model checks
+
+formal-sva-control: ## Run control unit SVA checks (SymbiYosys)
+	@if ! command -v $(SBY) >/dev/null 2>&1; then echo "ERROR: $(SBY) not found"; exit 2; fi
+	@mkdir -p $(FORMAL_OUT)
+	$(SBY) -f -d $(FORMAL_OUT)/control_unit_sva $(SVA_DIR)/control_unit_sva.sby
+
+formal-sva-rf: ## Run register file temporal SVA checks (SymbiYosys)
+	@if ! command -v $(SBY) >/dev/null 2>&1; then echo "ERROR: $(SBY) not found"; exit 2; fi
+	@mkdir -p $(FORMAL_OUT)
+	$(SBY) -f -d $(FORMAL_OUT)/register_file_sva $(SVA_DIR)/register_file_sva.sby
+
+formal-lec: formal-lec-alu formal-lec-branch ## Run all Yosys equivalence checks
+
+formal-lec-alu: ## Run ALU logical equivalence check
+	@if ! command -v $(YOSYS) >/dev/null 2>&1; then echo "ERROR: $(YOSYS) not found"; exit 2; fi
+	@mkdir -p $(FORMAL_OUT)
+	$(YOSYS) -s $(LEC_DIR)/alu_eq.ys
+
+formal-lec-branch: ## Run Branch Unit logical equivalence check
+	@if ! command -v $(YOSYS) >/dev/null 2>&1; then echo "ERROR: $(YOSYS) not found"; exit 2; fi
+	@mkdir -p $(FORMAL_OUT)
+	$(YOSYS) -s $(LEC_DIR)/branch_eq.ys
+
+formal-all: formal-sva formal-lec ## Run full formal hardware suite (SVA + LEC)
+
 # ======================
-# LX32 Backend Targets  
+# LX32 Backend Targets
 # ======================
 LLVM_DIR     ?= $(HOME)/llvm-project
 BACKEND_SRC  := $(CURDIR)/tools/lx32_backend

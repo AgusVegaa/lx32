@@ -1,0 +1,15 @@
+# Branch Unit equivalence check: RTL vs spec model
+read_verilog -sv rtl/arch/lx32_branch_pkg.sv
+read_verilog -sv rtl/core/branch_unit.sv
+read_verilog -sv tools/lx32_formal/lec/branch_unit_spec.sv
+
+proc
+opt
+
+equiv_make branch_unit branch_unit_spec branch_equiv
+prep -top branch_equiv
+
+equiv_simple
+equiv_status -assert
+
+

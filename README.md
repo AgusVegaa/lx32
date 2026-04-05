@@ -69,6 +69,8 @@ The LX32 architecture is verified through a dual-layer strategy.
 
 1.1 billion instructions validated in under 75 seconds.
 
+**Formal mathematics status:** the Coq proof suite is kernel-checked and the closure theorem (`T7_closure_claim_end_to_end`) is proved. This gives mathematical guarantees for LX32 under the explicit refinement hypothesis `rtl_refines_spec` (tracked by the formal + lockstep closure flow).
+
 For full details on the verification infrastructure see [`docs/tools/validator_make_usage.md`](docs/tools/validator_make_usage.md).
 
 ---
@@ -81,7 +83,7 @@ cd lx32
 make setup
 ```
 
-Requires: `verilator`, Rust toolchain (`cargo`).
+Requires: `verilator`, Rust toolchain (`cargo`), `coqc`, `sby`, `yosys`, `z3`, and `g++`.
 
 `make setup` handles everything: generates the Verilator bridge, compiles the validator, and runs the full test suite.
 
@@ -96,6 +98,16 @@ make validate-long                                   # Long program tests only
 make validate-seed SEED=42                           # Reproducible run
 make validate-long-custom NUM=50 LEN=2000 SEED=123  # Custom configuration
 make validate-help                                   # All available options
+make coq-local                                       # Build local Coq specs in tools/lx32_formal
+make coq-clean                                       # Remove Coq build artifacts
+make coq-only                                        # Build Coq spec in parent workspace
+make coq-check                                       # Clean + rebuild Coq spec
+make formal-validate SEED=42                         # Coq check + deterministic validator run
+make formal-sva                                      # Run SVA bounded model checks
+make formal-lec                                      # Run Yosys equivalence checks
+make formal-all                                      # Run full formal hardware suite
+make closure-proof SEED=42                           # Full closure gate (Coq + formal + seeded validator)
+make formal-help                                     # Show formal target list
 ```
 
 For simulation of individual testbenches:
@@ -106,6 +118,13 @@ make sim TB=alu_tb
 ```
 
 See [`docs/tools/validator_make_usage.md`](docs/tools/validator_make_usage.md) for the complete reference.
+
+Formal traceability and workflow docs:
+
+- [`docs/tools/coq_workflow.md`](docs/tools/coq_workflow.md)
+- [`docs/tools/isa_formal_equations.md`](docs/tools/isa_formal_equations.md)
+
+Formal Coq sources live in [`tools/lx32_formal/`](tools/lx32_formal/).
 
 ---
 

@@ -84,7 +84,7 @@ impl Lx32System {
         let rs2_data = self.reg_file.read_rs2(rs2_addr);
 
         // --- 4. Execution Stage ---
-        let alu_a = rs1_data;
+        let alu_a = if ctrl.src_a_pc { self.pc } else { rs1_data };
         let alu_b = if ctrl.alu_src { imm_ext } else { rs2_data };
 
         // ALU evaluation uses the MUXed alu_b
@@ -95,25 +95,33 @@ impl Lx32System {
         let branch_taken = branch_unit_golden(rs1_data, rs2_data, ctrl.branch, ctrl.branch_op);
 
         // --- 6. State Update ---
-        let next_pc = if ctrl.branch && branch_taken {
-            // Use wrapping addition to match RTL behavior (pc + imm_ext)
+        let next_pc = if ctrl.jump {
+            if ctrl.jalr {
+                rs1_data.wrapping_add(imm_ext) & 0xFFFF_FFFE
+            } else {
+                self.pc.wrapping_add(imm_ext)
+            }
+        } else if ctrl.branch && branch_taken {
             self.pc.wrapping_add(imm_ext)
         } else {
             self.pc.wrapping_add(4)
         };
-        self.pc = next_pc;
 
         // --- 7. Result MUX (Write-back source) ---
-        // result_src: 00=ALU, 01=Mem, 10=PC+4
+        // result_src: 00=ALU, 01=Mem, 10=PC+4, 11=IMM
         let write_data = match ctrl.result_src {
             0b00 => alu_res,
             0b01 => mem_rdata,
-            0b10 => self.pc,
+            0b10 => self.pc.wrapping_add(4),
+            0b11 => imm_ext,
             _ => alu_res,
         };
 
         // --- 8. Register File Write-back ---
         self.reg_file.tick(false, rd_addr, write_data, ctrl.reg_write);
+
+        // --- 8.5 Commit next PC ---
+        self.pc = next_pc;
 
         // --- 9. Return LSU signals for validation ---
         // (Address, Data to write, Write Enable)

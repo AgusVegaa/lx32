@@ -2,7 +2,7 @@
 
 module branch_unit_tb;
 
-  // IMPORTANTE: Debe coincidir con el nombre del paquete en tu RTL
+  // Import branch operation enum used by the DUT interface.
   import lx32_branch_pkg::*;
 
   // ============================================================
@@ -43,7 +43,7 @@ module branch_unit_tb;
   // ------------------------------------------------------------
   initial begin
     $dumpfile("tb_branch_unit.vcd");
-    $dumpvars(0, tb_branch_unit);
+    $dumpvars(0, branch_unit_tb);
   end
 
   // ------------------------------------------------------------

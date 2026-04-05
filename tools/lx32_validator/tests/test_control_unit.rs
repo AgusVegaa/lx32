@@ -145,8 +145,8 @@ pub fn run_control_unit_fuzzer(params: ControlUnitTestParams) {
     let mut rng = rand::rng();
 
     for i in 0..params.iterations {
-        // Randomly select instruction type (R, I, S, B)
-        let instr_type = rng.random_range(0..4);
+        // Randomly select instruction type (R, I, S, B, JAL, JALR, U)
+        let instr_type = rng.random_range(0..7);
 
         let instr = match instr_type {
             0 => {
@@ -181,7 +181,7 @@ pub fn run_control_unit_fuzzer(params: ControlUnitTestParams) {
 
                 (imm11_5 << 25) | (rs2 << 20) | (rs1 << 15) | (imm4_0 << 7) | opcode
             }
-            _ => {
+            3 => {
                 // B-Type: BEQ, BNE, BLT, BGE, BLTU, BGEU
                 let rs1 = rng.random_range(0..32);
                 let rs2 = rng.random_range(0..32);
@@ -190,7 +190,8 @@ pub fn run_control_unit_fuzzer(params: ControlUnitTestParams) {
                 let imm11 = ((offset >> 11) & 0x1) as u32;
                 let imm10_5 = ((offset >> 5) & 0x3F) as u32;
                 let imm4_1 = ((offset >> 1) & 0xF) as u32;
-                let funct3 = rng.random_range(0..6);
+                let branch_funct3 = [0u32, 1, 4, 5, 6, 7];
+                let funct3 = branch_funct3[rng.random_range(0..branch_funct3.len())];
                 let opcode = 0x63; // OP_BRANCH
 
                 (imm12 << 31)
@@ -201,6 +202,36 @@ pub fn run_control_unit_fuzzer(params: ControlUnitTestParams) {
                     | (imm4_1 << 8)
                     | (imm11 << 7)
                     | opcode
+            }
+            4 => {
+                // J-Type: JAL
+                let rd = rng.random_range(1..32);
+                let offset: i32 = rng.random_range(-524288..524288) * 2;
+                let imm20 = ((offset >> 20) & 0x1) as u32;
+                let imm10_1 = ((offset >> 1) & 0x3FF) as u32;
+                let imm11 = ((offset >> 11) & 0x1) as u32;
+                let imm19_12 = ((offset >> 12) & 0xFF) as u32;
+                (imm20 << 31)
+                    | (imm19_12 << 12)
+                    | (imm11 << 20)
+                    | (imm10_1 << 21)
+                    | (rd << 7)
+                    | 0x6F
+            }
+            5 => {
+                // I-Type: JALR
+                let rd = rng.random_range(1..32);
+                let rs1 = rng.random_range(0..32);
+                let imm = rng.random_range(-2048..2048) as i32;
+                let imm12 = (imm as u32) & 0xFFF;
+                (imm12 << 20) | (rs1 << 15) | (0 << 12) | (rd << 7) | 0x67
+            }
+            _ => {
+                // U-Type: LUI/AUIPC
+                let rd = rng.random_range(1..32);
+                let imm20 = rng.random_range(0..(1 << 20));
+                let opcode = if rng.random() { 0x37 } else { 0x17 };
+                (imm20 << 12) | (rd << 7) | opcode
             }
         };
 
@@ -245,6 +276,20 @@ pub fn run_control_unit_fuzzer(params: ControlUnitTestParams) {
 mod tests {
     use super::*;
 
+    fn run_directed_jump_case(instr: u32, rd: u8) {
+        let mut tb = TestBench::new();
+        unsafe { tick_core(tb.rtl, 0, instr, 0) };
+        tb.gold.step(instr, 0, false);
+
+        let rtl_pc = unsafe { get_pc(tb.rtl) };
+        let gold_pc = tb.gold.pc;
+        let rtl_rd = unsafe { get_reg(tb.rtl, rd) };
+        let gold_rd = tb.gold.reg_file.read_rs1(rd);
+
+        assert_eq!(rtl_pc, gold_pc, "PC mismatch for directed jump case");
+        assert_eq!(rtl_rd, gold_rd, "RD mismatch for directed jump case");
+    }
+
     /// Default configuration test - 100 iterations, standard ranges
     #[test]
     fn test_control_unit_default() {
@@ -277,6 +322,36 @@ mod tests {
             iterations: 1000,
             ..Default::default()
         });
+    }
+
+    #[test]
+    fn test_control_unit_directed_jal() {
+        // JAL x5, +8
+        let rd = 5u8;
+        let offset = 8i32;
+        let imm20 = ((offset >> 20) & 0x1) as u32;
+        let imm10_1 = ((offset >> 1) & 0x3FF) as u32;
+        let imm11 = ((offset >> 11) & 0x1) as u32;
+        let imm19_12 = ((offset >> 12) & 0xFF) as u32;
+        let instr = (imm20 << 31)
+            | (imm19_12 << 12)
+            | (imm11 << 20)
+            | (imm10_1 << 21)
+            | ((rd as u32) << 7)
+            | 0x6F;
+
+        run_directed_jump_case(instr, rd);
+    }
+
+    #[test]
+    fn test_control_unit_directed_jalr() {
+        // JALR x6, 4(x0)
+        let rd = 6u8;
+        let rs1 = 0u32;
+        let imm12 = 4u32;
+        let instr = (imm12 << 20) | (rs1 << 15) | (0 << 12) | ((rd as u32) << 7) | 0x67;
+
+        run_directed_jump_case(instr, rd);
     }
 }
 

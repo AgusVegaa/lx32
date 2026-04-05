@@ -15,6 +15,9 @@ module control_unit (
     output logic                              mem_write,
     output logic                        [1:0] result_src,
     output logic                              branch,
+    output logic                              jump,
+    output logic                              jalr,
+    output logic                              src_a_pc,
     output lx32_branch_pkg::branch_op_e       branch_op,
 
     // ------------------------------------------------------------
@@ -36,10 +39,6 @@ module control_unit (
   //   - No implicit latches (Default assignments + Default cases)
   //   - Full RV32I ALU coverage
   // ============================================================
-
-  import lx32_isa_pkg::*;
-  import lx32_alu_pkg::*;
-  import lx32_branch_pkg::*;
 
   // ------------------------------------------------------------
   // ALU Main Control Encoding
@@ -67,7 +66,10 @@ module control_unit (
     mem_write   = 1'b0;
     result_src  = 2'b00;
     branch      = 1'b0;
-    branch_op   = BR_EQ;
+    jump        = 1'b0;
+    jalr        = 1'b0;
+    src_a_pc    = 1'b0;
+    branch_op   = lx32_branch_pkg::BR_EQ;
     alu_op_main = ALU_MAIN_ADD;
 
     case (opcode)
@@ -75,7 +77,7 @@ module control_unit (
       // -------------------------
       // Load
       // -------------------------
-      OP_LOAD: begin
+      lx32_isa_pkg::OP_LOAD: begin
         reg_write  = 1'b1;
         alu_src    = 1'b1;
         result_src = 2'b01;
@@ -84,15 +86,54 @@ module control_unit (
       // -------------------------
       // Store
       // -------------------------
-      OP_STORE: begin
+      lx32_isa_pkg::OP_STORE: begin
         alu_src   = 1'b1;
         mem_write = 1'b1;
       end
 
       // -------------------------
+      // LUI
+      // -------------------------
+      lx32_isa_pkg::OP_LUI: begin
+        reg_write  = 1'b1;
+        alu_src    = 1'b1;
+        result_src = 2'b11; // Immediate
+      end
+
+      // -------------------------
+      // AUIPC
+      // -------------------------
+      lx32_isa_pkg::OP_AUIPC: begin
+        reg_write   = 1'b1;
+        alu_src     = 1'b1;
+        src_a_pc    = 1'b1;
+        alu_op_main = ALU_MAIN_ADD;
+      end
+
+      // -------------------------
+      // JAL
+      // -------------------------
+      lx32_isa_pkg::OP_JAL: begin
+        reg_write  = 1'b1;
+        result_src = 2'b10; // PC+4
+        jump       = 1'b1;
+      end
+
+      // -------------------------
+      // JALR
+      // -------------------------
+      lx32_isa_pkg::OP_JALR: begin
+        reg_write  = 1'b1;
+        result_src = 2'b10; // PC+4
+        jump       = 1'b1;
+        jalr       = 1'b1;
+        alu_src    = 1'b1;
+      end
+
+      // -------------------------
       // Register-Register ALU
       // -------------------------
-      OP_OP: begin
+      lx32_isa_pkg::OP_OP: begin
         reg_write   = 1'b1;
         alu_op_main = ALU_MAIN_FUNC;
       end
@@ -100,7 +141,7 @@ module control_unit (
       // -------------------------
       // Immediate ALU
       // -------------------------
-      OP_OP_IMM: begin
+      lx32_isa_pkg::OP_OP_IMM: begin
         reg_write   = 1'b1;
         alu_src     = 1'b1;
         alu_op_main = ALU_MAIN_FUNC;
@@ -109,19 +150,19 @@ module control_unit (
       // -------------------------
       // Branch
       // -------------------------
-      OP_BRANCH: begin
+      lx32_isa_pkg::OP_BRANCH: begin
         branch      = 1'b1;
         alu_op_main = ALU_MAIN_SUB;
 
         // Decode specific branch condition from funct3
         case (funct3)
-          3'b000:  branch_op = BR_EQ;
-          3'b001:  branch_op = BR_NE;
-          3'b100:  branch_op = BR_LT;
-          3'b101:  branch_op = BR_GE;
-          3'b110:  branch_op = BR_LTU;
-          3'b111:  branch_op = BR_GEU;
-          default: branch_op = BR_EQ;
+          3'b000:  branch_op = lx32_branch_pkg::BR_EQ;
+          3'b001:  branch_op = lx32_branch_pkg::BR_NE;
+          3'b100:  branch_op = lx32_branch_pkg::BR_LT;
+          3'b101:  branch_op = lx32_branch_pkg::BR_GE;
+          3'b110:  branch_op = lx32_branch_pkg::BR_LTU;
+          3'b111:  branch_op = lx32_branch_pkg::BR_GEU;
+          default: branch_op = lx32_branch_pkg::BR_EQ;
         endcase
       end
 
@@ -140,19 +181,19 @@ module control_unit (
   always_comb begin
 
     // Default ALU operation
-    alu_control = ALU_ADD;
+    alu_control = lx32_alu_pkg::ALU_ADD;
 
     case (alu_op_main)
 
       // -------------------------
       // Simple ADD (loads/stores)
       // -------------------------
-      ALU_MAIN_ADD: alu_control = ALU_ADD;
+      ALU_MAIN_ADD: alu_control = lx32_alu_pkg::ALU_ADD;
 
       // -------------------------
       // Branch compare (SUB)
       // -------------------------
-      ALU_MAIN_SUB: alu_control = ALU_SUB;
+      ALU_MAIN_SUB: alu_control = lx32_alu_pkg::ALU_SUB;
 
       // -------------------------
       // Funct3/Funct7 refinement
@@ -161,18 +202,18 @@ module control_unit (
 
         case (funct3)
 
-          3'b000: alu_control = (opcode == OP_OP && funct7_5) ? ALU_SUB : ALU_ADD;
+          3'b000: alu_control = (opcode == lx32_isa_pkg::OP_OP && funct7_5) ? lx32_alu_pkg::ALU_SUB : lx32_alu_pkg::ALU_ADD;
 
-          3'b001: alu_control = ALU_SLL;
-          3'b010: alu_control = ALU_SLT;
-          3'b011: alu_control = ALU_SLTU;
-          3'b100: alu_control = ALU_XOR;
-          3'b101: alu_control = funct7_5 ? ALU_SRA : ALU_SRL;
-          3'b110: alu_control = ALU_OR;
-          3'b111: alu_control = ALU_AND;
+          3'b001: alu_control = lx32_alu_pkg::ALU_SLL;
+          3'b010: alu_control = lx32_alu_pkg::ALU_SLT;
+          3'b011: alu_control = lx32_alu_pkg::ALU_SLTU;
+          3'b100: alu_control = lx32_alu_pkg::ALU_XOR;
+          3'b101: alu_control = funct7_5 ? lx32_alu_pkg::ALU_SRA : lx32_alu_pkg::ALU_SRL;
+          3'b110: alu_control = lx32_alu_pkg::ALU_OR;
+          3'b111: alu_control = lx32_alu_pkg::ALU_AND;
 
           // Default case for funct3 (fixes CASEINCOMPLETE)
-          default: alu_control = ALU_ADD;
+          default: alu_control = lx32_alu_pkg::ALU_ADD;
 
         endcase
       end
@@ -180,7 +221,7 @@ module control_unit (
       // -------------------------
       // Default case for alu_op_main (fixes CASEINCOMPLETE)
       // -------------------------
-      default: alu_control = ALU_ADD;
+      default: alu_control = lx32_alu_pkg::ALU_ADD;
 
     endcase
   end

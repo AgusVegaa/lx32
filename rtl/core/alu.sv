@@ -19,8 +19,6 @@ module alu #(
   //   - Lint/formal friendly
   // ============================================================
 
-  import lx32_alu_pkg::*;
-
   // ------------------------------------------------------------
   // Derived Structural Constants
   // ------------------------------------------------------------
@@ -46,27 +44,27 @@ module alu #(
       // -------------------------
       // Arithmetic
       // -------------------------
-      ALU_ADD  : alu_result = src_a + src_b;
-      ALU_SUB  : alu_result = src_a - src_b;
+      lx32_alu_pkg::ALU_ADD  : alu_result = src_a + src_b;
+      lx32_alu_pkg::ALU_SUB  : alu_result = src_a - src_b;
 
       // -------------------------
       // Shifts
       // -------------------------
-      ALU_SLL  : alu_result = src_a << shamt;
-      ALU_SRL  : alu_result = src_a >> shamt;
-      ALU_SRA  : alu_result = $signed(src_a) >>> shamt;
+      lx32_alu_pkg::ALU_SLL  : alu_result = src_a << shamt;
+      lx32_alu_pkg::ALU_SRL  : alu_result = src_a >> shamt;
+      lx32_alu_pkg::ALU_SRA  : alu_result = $signed(src_a) >>> shamt;
 
       // -------------------------
       // Comparisons
       // Result is 1-bit boolean,
       // explicitly zero-extended to WIDTH
       // -------------------------
-      ALU_SLT  : alu_result = {
+      lx32_alu_pkg::ALU_SLT  : alu_result = {
                               {(WIDTH-1){1'b0}},
                               ($signed(src_a) < $signed(src_b))
                             };
 
-      ALU_SLTU : alu_result = {
+      lx32_alu_pkg::ALU_SLTU : alu_result = {
                               {(WIDTH-1){1'b0}},
                               (src_a < src_b)
                             };
@@ -74,9 +72,9 @@ module alu #(
       // -------------------------
       // Logical
       // -------------------------
-      ALU_XOR  : alu_result = src_a ^ src_b;
-      ALU_OR   : alu_result = src_a | src_b;
-      ALU_AND  : alu_result = src_a & src_b;
+      lx32_alu_pkg::ALU_XOR  : alu_result = src_a ^ src_b;
+      lx32_alu_pkg::ALU_OR   : alu_result = src_a | src_b;
+      lx32_alu_pkg::ALU_AND  : alu_result = src_a & src_b;
 
     endcase
   end

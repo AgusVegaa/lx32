@@ -45,7 +45,7 @@ module lx32_system (
 
   // Control signals
   logic        reg_write, alu_src, mem_write;
-  logic        branch_en, branch_taken;
+  logic        branch_en, branch_taken, jump, jalr, src_a_pc;
   logic [1:0]  result_src;
   alu_op_e     alu_control;
   branch_op_e  branch_op_ctrl; // Internal wire for decoded branch type
@@ -62,8 +62,10 @@ module lx32_system (
 
   assign pc_out  = pc;
 
-  // PC Target Mux: Jump only if it's a branch instruction AND the condition is met
-  assign next_pc = (branch_en && branch_taken) ? (pc + imm_ext) : (pc + 4);
+  // PC target selection: JAL/JALR have priority over conditional branch
+  assign next_pc = jump
+                 ? (jalr ? ((rs1_data + imm_ext) & 32'hFFFF_FFFE) : (pc + imm_ext))
+                 : ((branch_en && branch_taken) ? (pc + imm_ext) : (pc + 4));
 
   // ------------------------------------------------------------
   // Main Control Unit
@@ -77,6 +79,9 @@ module lx32_system (
     .mem_write   (mem_write),
     .result_src  (result_src),
     .branch      (branch_en),
+    .jump        (jump),
+    .jalr        (jalr),
+    .src_a_pc    (src_a_pc),
     .branch_op   (branch_op_ctrl), // Connected to new control output
     .alu_control (alu_control)
   );
@@ -107,7 +112,7 @@ module lx32_system (
   // ------------------------------------------------------------
   // Arithmetic Logic Unit (ALU)
   // ------------------------------------------------------------
-  assign alu_a = rs1_data;
+  assign alu_a = src_a_pc ? pc : rs1_data;
   assign alu_b = alu_src ? imm_ext : rs2_data;
 
   alu core_alu (
@@ -146,6 +151,8 @@ module lx32_system (
   always_comb begin
     case (result_src)
       2'b01:   rd_data = mem_rdata; // Load from memory
+      2'b10:   rd_data = pc + 32'd4; // Link register for JAL/JALR
+      2'b11:   rd_data = imm_ext;    // LUI immediate
       default: rd_data = alu_res;   // ALU result
     endcase
   end

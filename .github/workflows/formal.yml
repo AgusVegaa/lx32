@@ -1,4 +1,4 @@
-name: Rust CI
+name: Formal CI
 
 on:
   push:
@@ -6,12 +6,10 @@ on:
   pull_request:
     branches: [ "main" ]
 
-env:
-  CARGO_TERM_COLOR: always
-
 jobs:
-  run-validator:
-    name: "Hardware Validation (Fuzzer)"
+
+  closure-proof:
+    name: "Full Closure Gate (Coq + Formal + Lockstep Seeded)"
     runs-on: ubuntu-latest
 
     steps:
@@ -33,5 +31,15 @@ jobs:
       with:
         workspaces: tools/lx32_validator
 
-    - name: Execute Automated Setup
-      run: make setup
+    - name: Verify Toolchain
+      run: |
+        coqc --version
+        sby --version
+        yosys -V
+        z3 --version
+        verilator --version
+
+    - name: Run Full Closure Proof Gate
+      run: |
+        make closure-proof SEED=42
+

@@ -25,6 +25,12 @@ make sim TB=lx32_system_tb
 
 This will compile the RTL and testbench, then run the simulation.
 
+To enable VCD generation in testbenches that support it:
+
+```bash
+make sim TB=lx32_system_tb SIM_ARGS="+trace +vcd"
+```
+
 ### Clean Simulation Artifacts
 
 ```bash
@@ -104,6 +110,63 @@ make validate-help
 
 Displays all available command-line options for the validator.
 
+### Coq Local Check
+
+```bash
+make coq-local
+```
+
+Builds local Coq specs (`LX32_*.v`) from `tools/lx32_formal/` if present.
+
+### Coq Artifact Cleanup
+
+```bash
+make coq-clean
+```
+
+Removes generated Coq artifacts from `tools/lx32_formal/` and cleans accidental root-level Coq build files.
+
+### Coq Parent Workspace Build
+
+```bash
+make coq-only
+make coq-check
+```
+
+Builds Coq specs from `COQ_SPEC_DIR` (defaults to `..`) when that workspace is available.
+
+### Formal + Deterministic Validation
+
+```bash
+make formal-validate SEED=42
+```
+
+Runs Coq checks and then a seeded validator run. `SEED` is mandatory for reproducibility.
+
+### SVA Bounded Model Checking
+
+```bash
+make formal-sva
+```
+
+Runs hardware temporal/property checks using SymbiYosys.
+
+### Logical Equivalence Checks (LEC-style)
+
+```bash
+make formal-lec
+```
+
+Runs Yosys equivalence proofs between selected RTL modules and spec models.
+
+### Full Formal Hardware Suite
+
+```bash
+make formal-all
+```
+
+Runs both SVA checks and equivalence checks.
+
 ---
 
 ## Notes
@@ -125,6 +188,15 @@ Displays all available command-line options for the validator.
 | `make validate-seed SEED=42` | All tests with seed 42                 |
 | `make validate-long-custom NUM=100 LEN=1000 VERBOSE=1 SEED=42` | Custom long program validation |
 | `make validate-help`     | Show validator CLI help                     |
+| `make coq-local`         | Build local Coq specs in `tools/lx32_formal` |
+| `make coq-clean`         | Remove Coq artifacts (local + root cleanup) |
+| `make coq-only`          | Build Coq specs from `COQ_SPEC_DIR`         |
+| `make coq-check`         | Clean + rebuild Coq specs                   |
+| `make formal-validate SEED=42` | Coq check + deterministic validation |
+| `make formal-sva`        | Run SymbiYosys bounded model checks         |
+| `make formal-lec`        | Run Yosys equivalence checks                |
+| `make formal-all`        | Run complete SVA + LEC suite                |
+| `make formal-help`       | Show formal target list                     |
 
 ---
 

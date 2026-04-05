@@ -37,7 +37,7 @@ module register_file (
   // ------------------------------------------------------------
   // Internal Register Storage (x0-x31)
   // ------------------------------------------------------------
-  logic [31:0] regs_out [0:31];
+  logic [31:0] regs_out [31:0];
 
   // x0 is always hardwired to zero
   assign regs_out[0] = 32'h0;

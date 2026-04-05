@@ -1,0 +1,21 @@
+[options]
+mode bmc
+depth 8
+
+[engines]
+smtbmc z3
+
+[script]
+read -formal -sv reg_generic.sv
+read -formal -sv register_file.sv
+read -formal -sv register_file_sva.sv
+prep -top register_file_sva
+
+[files]
+rtl/core/reg_generic.sv
+rtl/core/register_file.sv
+tools/lx32_formal/sva/register_file_sva.sv
+
+
+
+

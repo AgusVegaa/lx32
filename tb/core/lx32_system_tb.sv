@@ -16,6 +16,7 @@ module lx32_system_tb;
 
   localparam int CLK_PERIOD      = 10;
   localparam int SIM_TIMEOUT     = 10000;
+  localparam int CHECK_CYCLES    = 50;
   localparam logic [31:0] CONSOLE_ADDR = 32'h000007FC;
 
   // ------------------------------------------------------------
@@ -82,12 +83,18 @@ module lx32_system_tb;
   // Simulation Control + VCD
   // ------------------------------------------------------------
   initial begin
-    $dumpfile("lx32_system.vcd");
-    $dumpvars(0, tb_lx32_system);
+    integer progress_count;
+    integer i;
+    logic [31:0] last_pc;
+
+    if ($test$plusargs("vcd")) begin
+      $dumpfile("lx32_system.vcd");
+      $dumpvars(0, tb_lx32_system);
+    end
 
     // Initial state
     rst = 1;
-    
+
     // Reset sequence
     repeat (5) @(posedge clk);
     @(negedge clk);
@@ -95,12 +102,40 @@ module lx32_system_tb;
 
     $display(">>> LX32 System: Reset deasserted, starting execution <<<");
 
-    // Timeout protection
-    #(SIM_TIMEOUT);
+    fork
+      begin : progress_checker
+        progress_count = 0;
+        last_pc = i_addr;
 
-    $display("tb_lx32_system: Simulation timeout reached");
-    $dumpflush;
-    $finish;
+        for (i = 0; i < CHECK_CYCLES; i++) begin
+          @(posedge clk);
+          if (!rst) begin
+            assert(!$isunknown(i_addr))
+              else $fatal(1, "PC has unknown value at cycle %0d", i);
+            assert(i_addr[1:0] == 2'b00)
+              else $fatal(1, "PC misaligned at cycle %0d: 0x%08h", i, i_addr);
+
+            if (i_addr != last_pc)
+              progress_count++;
+            last_pc = i_addr;
+          end
+        end
+
+        assert(progress_count > 0)
+          else $fatal(1, "PC did not progress after reset");
+
+        $display("lx32_system_tb: PASS (PC alignment/progress checks)");
+        $dumpflush;
+        $finish;
+      end
+
+      begin : timeout_guard
+        #(SIM_TIMEOUT);
+        $fatal(1, "lx32_system_tb: timeout reached");
+      end
+    join_any
+
+    disable fork;
   end
 
 endmodule

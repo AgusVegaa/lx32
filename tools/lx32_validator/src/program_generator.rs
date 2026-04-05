@@ -34,6 +34,8 @@ pub struct ProgramConfig {
     pub enable_loads: bool,
     pub enable_stores: bool,
     pub enable_alu: bool,
+    pub enable_jumps: bool,
+    pub enable_upper_imm: bool,
 }
 
 impl Default for ProgramConfig {
@@ -44,6 +46,8 @@ impl Default for ProgramConfig {
             enable_loads: true,
             enable_stores: true,
             enable_alu: true,
+            enable_jumps: true,
+            enable_upper_imm: true,
         }
     }
 }
@@ -88,6 +92,12 @@ impl Program {
         if config.enable_branches {
             categories.push("BRANCH");
         }
+        if config.enable_jumps {
+            categories.push("JUMP");
+        }
+        if config.enable_upper_imm {
+            categories.push("UIMM");
+        }
 
         if categories.is_empty() {
             categories.push("ALU"); // fallback
@@ -100,7 +110,73 @@ impl Program {
             "LOAD" => Self::generate_load_instruction(rng),
             "STORE" => Self::generate_store_instruction(rng),
             "BRANCH" => Self::generate_branch_instruction(rng),
+            "JUMP" => Self::generate_jump_instruction(rng),
+            "UIMM" => Self::generate_upper_imm_instruction(rng),
             _ => Self::generate_alu_instruction(rng),
+        }
+    }
+
+    /// Generate JAL/JALR instructions
+    fn generate_jump_instruction(rng: &mut impl RngExt) -> Instruction {
+        let jal = rng.random();
+        let rd = rng.random_range(1..32) as u8;
+        if jal {
+            let offset = (rng.random_range(-524288..524287) as i32) & !1;
+            let imm20 = ((offset >> 20) & 0x1) as u32;
+            let imm10_1 = ((offset >> 1) & 0x3FF) as u32;
+            let imm11 = ((offset >> 11) & 0x1) as u32;
+            let imm19_12 = ((offset >> 12) & 0xFF) as u32;
+            let encoding = (imm20 << 31)
+                | (imm19_12 << 12)
+                | (imm11 << 20)
+                | (imm10_1 << 21)
+                | ((rd as u32) << 7)
+                | 0x6F;
+            Instruction {
+                encoding,
+                mnemonic: format!("JAL x{}, {}", rd, offset),
+                rd: Some(rd),
+                rs1: None,
+                rs2: None,
+                imm: Some(offset),
+            }
+        } else {
+            let rs1 = rng.random_range(0..32) as u8;
+            let imm = rng.random_range(-2048..2047) as i32;
+            let encoding = ((imm as u32) << 20)
+                | ((rs1 as u32) << 15)
+                | (0x0 << 12)
+                | ((rd as u32) << 7)
+                | 0x67;
+            Instruction {
+                encoding,
+                mnemonic: format!("JALR x{}, {}(x{})", rd, imm, rs1),
+                rd: Some(rd),
+                rs1: Some(rs1),
+                rs2: None,
+                imm: Some(imm),
+            }
+        }
+    }
+
+    /// Generate LUI/AUIPC instructions
+    fn generate_upper_imm_instruction(rng: &mut impl RngExt) -> Instruction {
+        let rd = rng.random_range(1..32) as u8;
+        let imm20 = rng.random_range(0..(1 << 20)) as u32;
+        let lui = rng.random();
+        let opcode = if lui { 0x37 } else { 0x17 };
+        let encoding = (imm20 << 12) | ((rd as u32) << 7) | opcode;
+        Instruction {
+            encoding,
+            mnemonic: if lui {
+                format!("LUI x{}, 0x{:x}", rd, imm20)
+            } else {
+                format!("AUIPC x{}, 0x{:x}", rd, imm20)
+            },
+            rd: Some(rd),
+            rs1: None,
+            rs2: None,
+            imm: Some((imm20 << 12) as i32),
         }
     }
 

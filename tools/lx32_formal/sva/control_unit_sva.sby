@@ -1,0 +1,23 @@
+[options]
+mode bmc
+depth 2
+
+[engines]
+smtbmc z3
+
+[script]
+read -formal -sv lx32_isa_pkg.sv
+read -formal -sv lx32_alu_pkg.sv
+read -formal -sv lx32_branch_pkg.sv
+read -formal -sv control_unit.sv
+read -formal -sv control_unit_sva.sv
+prep -top control_unit_sva
+
+[files]
+rtl/arch/lx32_isa_pkg.sv
+rtl/arch/lx32_alu_pkg.sv
+rtl/arch/lx32_branch_pkg.sv
+rtl/core/control_unit.sv
+tools/lx32_formal/sva/control_unit_sva.sv
+
+

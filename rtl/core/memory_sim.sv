@@ -54,11 +54,17 @@ module memory_sim (
   // ------------------------------------------------------------
   initial begin
     integer i;
+    integer program_fd;
 
     for (i = 0; i < 1024; i++)
       ram[i] = 32'b0;
 
-    $readmemh("program.hex", ram);
+    // Load an external image only when available; otherwise keep zeroed memory.
+    program_fd = $fopen("program.hex", "r");
+    if (program_fd != 0) begin
+      $fclose(program_fd);
+      $readmemh("program.hex", ram);
+    end
   end
 
 

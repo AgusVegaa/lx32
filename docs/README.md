@@ -131,6 +131,26 @@ This README provides a comprehensive guide to the LX32 project documentation. It
 │       ├── reg_generic_tb.sv
 │       └── register_file_tb.sv
 └── tools
+    ├── lx32_formal
+    │   ├── README.md
+    │   ├── LX32_ALU.v
+    │   ├── LX32_Arch.v
+    │   ├── LX32_Branch.v
+    │   ├── LX32_Control.v
+    │   ├── LX32_Decode.v
+    │   ├── LX32_RegisterFile.v
+    │   ├── LX32_Safety.v
+    │   ├── LX32_Step.v
+    │   ├── lec
+    │   │   ├── alu_eq.ys
+    │   │   ├── alu_spec.sv
+    │   │   ├── branch_eq.ys
+    │   │   └── branch_unit_spec.sv
+    │   └── sva
+    │       ├── control_unit_sva.sby
+    │       ├── control_unit_sva.sv
+    │       ├── register_file_sva.sby
+    │       └── register_file_sva.sv
     ├── lx32_validator
     │   ├── Cargo.lock
     │   ├── Cargo.toml
@@ -237,6 +257,8 @@ This README provides a comprehensive guide to the LX32 project documentation. It
 - **demo.md**: Demonstrates advanced validation features, reproducible seeds, CLI help, long program testing.
 - **setup.md**: Environment setup, dependency checks, bridge generation, validator compilation, initial validation.
 - **validator_make_usage.md**: Makefile guide for simulation and validation, target descriptions, CLI options, custom scenarios.
+- **coq_workflow.md**: Practical Coq build and validation workflow.
+- **isa_formal_equations.md**: Full ISA equation sheet and canonical closure theorem.
 
 ---
 

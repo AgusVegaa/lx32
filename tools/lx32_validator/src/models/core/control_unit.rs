@@ -24,6 +24,9 @@ pub struct ControlSignals {
     pub mem_write: bool,
     pub result_src: u8, // 2-bit signal: 00=ALU, 01=Mem, 10=PC+4
     pub branch: bool,
+    pub jump: bool,
+    pub jalr: bool,
+    pub src_a_pc: bool,
     pub branch_op: branch_op_e,
     pub alu_control: alu_op_e,
 }
@@ -82,6 +85,33 @@ pub fn control_unit_golden(opcode: opcode_t, funct3: u8, funct7_5: bool) -> Cont
                 0b111 => branch_op_e::BR_GEU,
                 _ => branch_op_e::BR_EQ,
             };
+        }
+        // LUI
+        opcode_t::OP_LUI => {
+            sigs.reg_write = true;
+            sigs.alu_src = true;
+            sigs.result_src = 0b11;
+        }
+        // AUIPC
+        opcode_t::OP_AUIPC => {
+            sigs.reg_write = true;
+            sigs.alu_src = true;
+            sigs.src_a_pc = true;
+            alu_op_main = AluMain::Add;
+        }
+        // JAL
+        opcode_t::OP_JAL => {
+            sigs.reg_write = true;
+            sigs.result_src = 0b10;
+            sigs.jump = true;
+        }
+        // JALR
+        opcode_t::OP_JALR => {
+            sigs.reg_write = true;
+            sigs.result_src = 0b10;
+            sigs.jump = true;
+            sigs.jalr = true;
+            sigs.alu_src = true;
         }
         // Default: No-op or Invalid
         _ => {}

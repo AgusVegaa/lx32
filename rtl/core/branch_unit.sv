@@ -20,8 +20,6 @@ module branch_unit #(
   //   - No redundant defaults
   // ============================================================
 
-  import lx32_branch_pkg::*;
-
   // ------------------------------------------------------------
   // Internal Signals
   // ------------------------------------------------------------
@@ -38,21 +36,21 @@ module branch_unit #(
       // -------------------------
       // Equality
       // -------------------------
-      BR_EQ  : compare_result = (src_a == src_b);
-      BR_NE  : compare_result = (src_a != src_b);
+      lx32_branch_pkg::BR_EQ  : compare_result = (src_a == src_b);
+      lx32_branch_pkg::BR_NE  : compare_result = (src_a != src_b);
 
       // -------------------------
       // Signed comparisons
       // -------------------------
-      BR_LT  : compare_result = ($signed(src_a) <  $signed(src_b));
-      BR_GE  : compare_result = ($signed(src_a) >= $signed(src_b));
+      lx32_branch_pkg::BR_LT  : compare_result = ($signed(src_a) <  $signed(src_b));
+      lx32_branch_pkg::BR_GE  : compare_result = ($signed(src_a) >= $signed(src_b));
 
       // -------------------------
       // Unsigned comparisons
       // Use explicit unsigned casting to force proper evaluation
       // -------------------------
-      BR_LTU : compare_result = ($unsigned(src_a) <  $unsigned(src_b));
-      BR_GEU : compare_result = ($unsigned(src_a) >= $unsigned(src_b));
+      lx32_branch_pkg::BR_LTU : compare_result = ($unsigned(src_a) <  $unsigned(src_b));
+      lx32_branch_pkg::BR_GEU : compare_result = ($unsigned(src_a) >= $unsigned(src_b));
 
       default: compare_result = 1'b0;
 

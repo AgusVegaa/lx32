@@ -1,0 +1,15 @@
+# ALU equivalence check: RTL vs spec model
+read_verilog -sv rtl/arch/lx32_alu_pkg.sv
+read_verilog -sv rtl/core/alu.sv
+read_verilog -sv tools/lx32_formal/lec/alu_spec.sv
+
+proc
+opt
+
+equiv_make alu alu_spec alu_equiv
+prep -top alu_equiv
+
+equiv_simple
+equiv_status -assert
+
+

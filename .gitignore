@@ -1,5 +1,6 @@
 # Simulation artifacts
 .sim/
+.formal/
 sim/
 *.vcd
 *.out
@@ -7,6 +8,12 @@ sim/
 
 # Rust / Tools
 tools/lx32_validator/target/
+tools/lx32_formal/*.vo
+tools/lx32_formal/*.vok
+tools/lx32_formal/*.vos
+tools/lx32_formal/*.glob
+tools/lx32_formal/.*.aux
+tools/lx32_formal/.lia.cache
 tools/**/*.tv
 !tools/**/src/
 !tools/**/Cargo.toml
