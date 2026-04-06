@@ -24,9 +24,11 @@ public:
 
 protected:
   unsigned getRelocType(const MCFixup &Fixup, const MCValue &Target, bool IsPCRel) const override {
-    // Return standard ELF relocations depending on the fixup kind.
-    // For now we just return a placeholder or standard generic reloc.
-    return 0; // R_NONE is always 0
+    if (Fixup.getKind() == (MCFixupKind)1 /* branch */)
+      return ELF::R_RISCV_BRANCH;
+    if (Fixup.getKind() == (MCFixupKind)2 /* jump */)
+      return ELF::R_RISCV_JAL;
+    return ELF::R_RISCV_NONE; // R_NONE is always 0
   }
 };
 } // end anonymous namespace

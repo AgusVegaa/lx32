@@ -47,16 +47,28 @@ public:
     return getMachineOpValue(MI, MI.getOperand(OpNo), Fixups, STI);
   }
 
-  unsigned getJumpTargetOpValue(const MCInst &MI, unsigned OpNo,
-                                SmallVectorImpl<MCFixup> &Fixups,
-                                const MCSubtargetInfo &STI) const {
-    return getMachineOpValue(MI, MI.getOperand(OpNo), Fixups, STI);
-  }
-
   unsigned getBranchTargetOpValue(const MCInst &MI, unsigned OpNo,
                                   SmallVectorImpl<MCFixup> &Fixups,
                                   const MCSubtargetInfo &STI) const {
-    return getMachineOpValue(MI, MI.getOperand(OpNo), Fixups, STI);
+    const MCOperand &MO = MI.getOperand(OpNo);
+    if (MO.isExpr()) {
+      Fixups.push_back(MCFixup::create(0, MO.getExpr(),
+                                       (MCFixupKind)1));
+      return 0;
+    }
+    return getMachineOpValue(MI, MO, Fixups, STI);
+  }
+
+  unsigned getJumpTargetOpValue(const MCInst &MI, unsigned OpNo,
+                                SmallVectorImpl<MCFixup> &Fixups,
+                                const MCSubtargetInfo &STI) const {
+    const MCOperand &MO = MI.getOperand(OpNo);
+    if (MO.isExpr()) {
+      Fixups.push_back(MCFixup::create(0, MO.getExpr(),
+                                       (MCFixupKind)2));
+      return 0;
+    }
+    return getMachineOpValue(MI, MO, Fixups, STI);
   }
 };
 } // end anonymous namespace

@@ -29,7 +29,31 @@ public:
   void applyFixup(const MCFragment &Fragment, const MCFixup &Fixup,
                   const MCValue &Target, uint8_t *Data, uint64_t Value,
                   bool IsResolved) override {
-    // TODO: implement fixup application
+    if (!IsResolved) return;
+    uint32_t CurVal = 0;
+    CurVal =  (uint32_t)Data[0] | ((uint32_t)Data[1] << 8) |
+             ((uint32_t)Data[2] << 16) | ((uint32_t)Data[3] << 24);
+
+    if (Fixup.getKind() == (MCFixupKind)1 /* branch */) {
+      uint32_t imm = Value;
+      uint32_t bit11 = (imm >> 11) & 1;
+      uint32_t bit4_1 = (imm >> 1) & 0xF;
+      uint32_t bit10_5 = (imm >> 5) & 0x3F;
+      uint32_t bit12 = (imm >> 12) & 1;
+      CurVal |= (bit11 << 7) | (bit4_1 << 8) | (bit10_5 << 25) | (bit12 << 31);
+    } else if (Fixup.getKind() == (MCFixupKind)2 /* jump */) {
+      uint32_t imm = Value;
+      uint32_t bit19_12 = (imm >> 12) & 0xFF;
+      uint32_t bit11 = (imm >> 11) & 1;
+      uint32_t bit10_1 = (imm >> 1) & 0x3FF;
+      uint32_t bit20 = (imm >> 20) & 1;
+      CurVal |= (bit19_12 << 12) | (bit11 << 20) | (bit10_1 << 21) | (bit20 << 31);
+    }
+
+    Data[0] = CurVal & 0xFF;
+    Data[1] = (CurVal >> 8) & 0xFF;
+    Data[2] = (CurVal >> 16) & 0xFF;
+    Data[3] = (CurVal >> 24) & 0xFF;
   }
 
   bool writeNopData(raw_ostream &OS, uint64_t Count,
@@ -56,4 +80,3 @@ MCAsmBackend *llvm::createLX32AsmBackend(const Target &T,
                                          const MCTargetOptions &Options) {
   return new LX32AsmBackend(STI, 0); // OSABI 0
 }
-
