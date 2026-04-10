@@ -26,7 +26,7 @@ ifeq ($(UNAME_S),Darwin)
 else
   # Linux (apt or general)
   VERILATOR_ROOT := /usr/share/verilator
-endif
+endif	
 VERILATOR_INC := $(VERILATOR_ROOT)/include
 
 VALIDATOR_DIR := tools/lx32_validator
@@ -214,20 +214,21 @@ formal-all: formal-sva formal-lec ## Run full formal hardware suite (SVA + LEC)
 # ======================
 # LX32 Backend Targets
 # ======================
-LLVM_DIR     ?= $(HOME)/llvm-project
+LLVM_DIR     ?= $(CURDIR)/.llvm
 BACKEND_SRC  := $(CURDIR)/tools/lx32_backend
-LLVM_REPO    := https://github.com/llvm/llvm-project
+LLVM_REPO    := https://github.com/Axel84727/llvm-project-lx32.git
 NPROC        := $(shell nproc 2>/dev/null || sysctl -n hw.logicalcpu)
 LLD_EXISTS   := $(shell which lld 2>/dev/null)
+LLVM_BRANCH ?= main
 
 .PHONY: check-llvm install-backend build-backend setup-backend test-baremetal test-baremetal-deep compile-c
 
 check-llvm: ## Check LLVM, clone if missing
-	@if [ -d "$(LLVM_DIR)" ]; then \
+	@if [ -d "$(LLVM_DIR)/.git" ]; then \
 		echo "✓ LLVM found at $(LLVM_DIR)"; \
 	else \
 		echo "→ Cloning LLVM..."; \
-		git clone --depth=1 $(LLVM_REPO) $(LLVM_DIR); \
+		git clone --depth=1 --branch $(LLVM_BRANCH) $(LLVM_REPO) $(LLVM_DIR); \
 		echo "✓ LLVM cloned"; \
 	fi
 

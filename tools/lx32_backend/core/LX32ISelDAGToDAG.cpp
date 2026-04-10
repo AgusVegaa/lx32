@@ -42,7 +42,7 @@ private:
   void SelectFrameIndex(SDNode *Node);
 
   // Include the auto-generated selection matcher.
-  #include "../TableGen/LX32GenDAGISel.inc"
+  #include "LX32GenDAGISel.inc"
 };
 
 class LX32DAGToDAGISelLegacy : public SelectionDAGISelLegacy {

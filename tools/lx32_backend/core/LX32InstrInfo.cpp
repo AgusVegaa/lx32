@@ -39,7 +39,7 @@
 //===----------------------------------------------------------------------===//
 
 #define GET_INSTRINFO_CTOR_DTOR
-#include "../TableGen/LX32GenInstrInfo.inc"
+#include "LX32GenInstrInfo.inc"
 
 using namespace llvm;
 

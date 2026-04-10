@@ -19,7 +19,7 @@
 
 using namespace llvm;
 
-#include "../TableGen/LX32GenCallingConv.inc"
+#include "LX32GenCallingConv.inc"
 
 static SDValue lowerCCValue(SDValue Val, CCValAssign::LocInfo LocInfo,
                             EVT ValVT, SelectionDAG &DAG,

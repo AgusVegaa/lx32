@@ -51,14 +51,14 @@
 // Pull in generated register enums first so X0..X31 and *RegClassID are
 // visible everywhere this header is included.
 #define GET_REGINFO_ENUM
-#include "../TableGen/LX32GenRegisterInfo.inc"
+#include "LX32GenRegisterInfo.inc"
 
 // Pull in the TableGen-generated LX32GenRegisterInfo class declaration.
 // GET_REGINFO_HEADER emits:
 //   struct LX32GenRegisterInfo : public TargetRegisterInfo { ... };
 //   namespace LX32 { extern const TargetRegisterClass GPRRegClass; ... }
 #define GET_REGINFO_HEADER
-#include "../TableGen/LX32GenRegisterInfo.inc"
+#include "LX32GenRegisterInfo.inc"
 
 namespace llvm {
 

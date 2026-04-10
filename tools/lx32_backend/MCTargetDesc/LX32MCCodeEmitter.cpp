@@ -16,7 +16,7 @@
 using namespace llvm;
 
 #define GET_INSTRINFO_ENUM
-#include "../TableGen/LX32GenInstrInfo.inc"
+#include "LX32GenInstrInfo.inc"
 
 #define DEBUG_TYPE "mccodeemitter"
 

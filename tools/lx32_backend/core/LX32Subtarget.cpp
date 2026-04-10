@@ -50,7 +50,7 @@
 
 #define GET_SUBTARGETINFO_CTOR
 #define GET_SUBTARGETINFO_TARGET_DESC
-#include "../TableGen/LX32GenSubtargetInfo.inc"
+#include "LX32GenSubtargetInfo.inc"
 
 namespace llvm {
 
