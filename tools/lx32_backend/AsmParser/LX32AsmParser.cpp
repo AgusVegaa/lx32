@@ -24,9 +24,9 @@ using namespace llvm;
 
 // Put the enums here
 #define GET_REGINFO_ENUM
-#include "../TableGen/LX32GenRegisterInfo.inc"
+#include "LX32GenRegisterInfo.inc"
 #define GET_INSTRINFO_ENUM
-#include "../TableGen/LX32GenInstrInfo.inc"
+#include "LX32GenInstrInfo.inc"
 
 namespace {
 

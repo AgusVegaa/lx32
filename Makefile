@@ -26,7 +26,7 @@ ifeq ($(UNAME_S),Darwin)
 else
   # Linux (apt or general)
   VERILATOR_ROOT := /usr/share/verilator
-endif
+endif	
 VERILATOR_INC := $(VERILATOR_ROOT)/include
 
 VALIDATOR_DIR := tools/lx32_validator

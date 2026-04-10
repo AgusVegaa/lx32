@@ -31,3 +31,6 @@ tools/**/*.tv
 /dataSources.local.xml
 # Editor-based HTTP Client requests
 /httpRequests/
+
+# Backend llvm
+.llvm/

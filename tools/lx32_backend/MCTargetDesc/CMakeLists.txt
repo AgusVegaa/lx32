@@ -13,4 +13,6 @@ add_llvm_component_library(LLVMLX32Desc
 
   ADD_TO_COMPONENT
   LX32
+
 )
+add_dependencies(LLVMLX32Desc LX32CommonTableGen)
