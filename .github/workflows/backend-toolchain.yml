@@ -18,6 +18,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Preflight Docker context
+        run: |
+          set -euo pipefail
+          pwd
+          ls -la
+          test -f Dockerfile
+
       - name: Build runtime image with pinned toolchain
         run: |
           docker build \
