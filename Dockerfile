@@ -28,6 +28,8 @@ RUN --mount=type=cache,target=/root/.cache/ccache \
     -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
     -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
     && ninja -C /llvm-build llvm-tblgen \
+    && cd /llvm-src/llvm/lib/Target/LX32/TableGen \
+    && LLVM_TBLGEN=/llvm-build/bin/llvm-tblgen LLVM_INCLUDE_DIR=/llvm-src/llvm/include bash ./compile_td.sh \
     && ninja -C /llvm-build -j"${LLVM_JOBS}" ${LLVM_BUILD_TARGETS} \
     && printf '%s\n' "${BACKEND_COMMIT}" > /llvm-build/LX32_BACKEND_COMMIT
 
