@@ -40,15 +40,18 @@ jobs:
           set -euo pipefail
           mkdir -p dist/bin dist/lib
           cid="$(docker create lx32-runtime-ci:${GITHUB_SHA})"
+          docker start "${cid}" >/dev/null
           docker cp "${cid}:/usr/local/bin/llc" dist/bin/
           docker cp "${cid}:/usr/local/bin/llvm-mc" dist/bin/
           docker cp "${cid}:/usr/local/bin/llvm-objcopy" dist/bin/
-          docker cp "${cid}:/usr/bin/ld.lld" dist/bin/ld.lld
+          # ld.lld is a symlink in the image; copy a dereferenced binary payload.
+          docker exec "${cid}" /bin/sh -lc 'cp -L /usr/bin/ld.lld /tmp/ld.lld.real'
+          docker cp "${cid}:/tmp/ld.lld.real" dist/bin/ld.lld
           docker cp "${cid}:/usr/local/lib/lx32-llvm" dist/lib/
           docker cp "${cid}:/usr/local/share/LX32_BACKEND_COMMIT" dist/
           docker rm -v "${cid}"
 
-          chmod +x dist/bin/*
+          find dist/bin -type f -exec chmod +x {} +
           tar -C dist -czf "lx32-toolchain-${GITHUB_SHA}-linux-amd64.tar.gz" .
 
       - name: Upload commit-versioned artifact
