@@ -67,8 +67,8 @@ jobs:
             BACKEND_COMMIT=${{ github.sha }}
             BACKEND_HASH=${{ steps.backend_hash.outputs.value }}
             LLVM_JOBS=${{ steps.cores.outputs.jobs }}
-          cache-from: type=gha,scope=lx32-runtime-base
-          cache-to: type=gha,mode=max,scope=lx32-runtime-base
+          cache-from: type=gha,scope=lx32-runtime-v2
+          cache-to: type=gha,mode=max,scope=lx32-runtime-v2
 
       - name: Backend smoke preflight (llc + SelectionDAG)
         run: |
