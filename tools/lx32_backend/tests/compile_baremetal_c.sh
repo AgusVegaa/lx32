@@ -102,6 +102,7 @@ LLC_COMMON=(
   -march=lx32
   -mcpu=generic
   -mtriple=lx32-unknown-elf
+  -O0
 )
 
 if [[ "$LX32_BACKEND_DEBUG" == "1" ]]; then

@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
-
-ROOT="/Users/axel/lx32/tools/lx32_backend/tests"
-PROGRAM_DIR="$ROOT/baremetal/programs"
-COMPILE_SH="$ROOT/compile_baremetal_c.sh"
+ROOT="$(cd "$(dirname "$0")" && pwd)"
+PROGRAM_DIR="$ROOT/programs"
+COMPILE_SH="$ROOT/../compile_baremetal_c.sh"
 MODE="${1:-smoke}"
 
 if [[ "$MODE" != "smoke" && "$MODE" != "deep" ]]; then
@@ -13,6 +12,16 @@ fi
 
 if [[ ! -x "$COMPILE_SH" ]]; then
   chmod +x "$COMPILE_SH"
+fi
+
+if [[ ! -d "$PROGRAM_DIR" ]]; then
+  echo "error: program directory not found: $PROGRAM_DIR" >&2
+  exit 1
+fi
+
+if [[ ! -f "$COMPILE_SH" ]]; then
+  echo "error: compile helper not found: $COMPILE_SH" >&2
+  exit 1
 fi
 
 check_one() {
@@ -57,26 +66,6 @@ check_one() {
   echo "PASS $stem"
 }
 
-check_expected_fail() {
-  local c_file="$1"
-  local stem
-  stem="$(basename "$c_file" .c)"
-  local out_prefix="/tmp/lx32_${stem}_xfail"
-
-  echo "==> $stem (expected-fail for now)"
-  if "$COMPILE_SH" "$c_file" "$out_prefix" >/tmp/lx32_${stem}_xfail.log 2>&1; then
-    echo "FAIL $stem: expected current backend to fail this case" >&2
-    return 1
-  fi
-
-  if ! grep -Eq "Cannot select|Abort trap|LLVM ERROR" "/tmp/lx32_${stem}_xfail.log"; then
-    echo "FAIL $stem: failure did not match known selector gap" >&2
-    cat "/tmp/lx32_${stem}_xfail.log"
-    return 1
-  fi
-
-  echo "XFAIL $stem"
-}
 
 check_one "$PROGRAM_DIR/01_return42.c"
 check_one "$PROGRAM_DIR/02_pointer_store.c"
@@ -92,6 +81,3 @@ if [[ "$MODE" == "deep" ]]; then
 fi
 
 echo "bare-metal C $MODE tests passed"
-
-
-
