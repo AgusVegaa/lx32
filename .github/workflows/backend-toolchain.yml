@@ -56,6 +56,7 @@ jobs:
           target: runtime
           tags: lx32-runtime-ci:${{ github.sha }}
           load: true
+          no-cache: 'true'
           build-args: |
             LLVM_REF=${{ env.LLVM_REF_PIN }}
             BACKEND_COMMIT=${{ github.sha }}
