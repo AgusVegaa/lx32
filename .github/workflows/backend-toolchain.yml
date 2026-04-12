@@ -95,6 +95,10 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Normalize image owner (lowercase)
+        id: owner
+        run: echo "value=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
+
       - name: Download toolchain artifact
         uses: actions/download-artifact@v4
         with:
@@ -120,7 +124,7 @@ jobs:
           context: .
           file: Dockerfile.runtime
           tags: |
-            ghcr.io/${{ github.repository_owner }}/lx32-runtime:${{ github.sha }}
+            ghcr.io/${{ steps.owner.outputs.value }}/lx32-runtime:${{ github.sha }}
           push: true
           cache-from: type=gha,scope=lx32-runtime-publish
           cache-to: type=gha,mode=max,scope=lx32-runtime-publish
@@ -129,7 +133,7 @@ jobs:
         if: github.ref_name == 'refactor/portability'
         run: |
           set -euo pipefail
-          IMAGE="ghcr.io/${{ github.repository_owner }}/lx32-runtime"
+          IMAGE="ghcr.io/${{ steps.owner.outputs.value }}/lx32-runtime"
           docker pull "${IMAGE}:${GITHUB_SHA}"
           docker tag "${IMAGE}:${GITHUB_SHA}" "${IMAGE}:latest"
           docker push "${IMAGE}:latest"
