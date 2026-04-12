@@ -116,7 +116,7 @@ void LX32DAGToDAGISel::Select(SDNode *Node) {
     }
     // Register mask
     const uint32_t *Mask = Subtarget->getRegisterInfo()->getCallPreservedMask(
-        DAG.getMachineFunction(), DAG.getMachineFunction().getFunction().getCallingConv());
+        CurDAG->getMachineFunction(), CurDAG->getMachineFunction().getFunction().getCallingConv());
     Ops.push_back(CurDAG->getRegisterMask(Mask));
 
     Ops.push_back(Node->getOperand(0)); // chain
