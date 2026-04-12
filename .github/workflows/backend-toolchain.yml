@@ -59,6 +59,21 @@ jobs:
           cache-from: type=gha,scope=lx32-runtime-base
           cache-to: type=gha,mode=max,scope=lx32-runtime-base
 
+      - name: Preflight LX32 llc on branch-loop repro
+        run: |
+          set -euo pipefail
+          docker run --rm \
+            -v "${GITHUB_WORKSPACE}:/workspace" \
+            -w /workspace \
+            lx32-runtime-ci:${GITHUB_SHA} \
+            /bin/bash -lc '
+              set -euo pipefail
+              /usr/local/bin/llc --version
+              LX32_BACKEND_DEBUG=1 tools/lx32_backend/tests/compile_baremetal_c.sh \
+                tools/lx32_backend/tests/baremetal/programs/04_branch_loop.c \
+                /tmp/lx32_ci_04_branch_loop
+            '
+
       - name: Extract versioned toolchain payload
         run: |
           set -euo pipefail
