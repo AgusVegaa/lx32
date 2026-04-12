@@ -9,9 +9,12 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     && rm -rf /var/lib/apt/lists/*
 ARG LLVM_REPO=https://github.com/Axel84727/llvm-project-lx32.git
 ARG LLVM_REF=main
-ARG BACKEND_COMMIT=unknown
 ARG LLVM_JOBS=4
 ARG LLVM_BUILD_TARGETS="llc llvm-mc llvm-objcopy"
+ENV CCACHE_DIR=/root/.cache/ccache \
+    CCACHE_BASEDIR=/llvm-src/llvm \
+    CCACHE_COMPILERCHECK=content \
+    CCACHE_NOHASHDIR=true
 RUN set -eux; \
     for i in 1 2 3; do \
       rm -rf /llvm-src; \
@@ -25,9 +28,17 @@ RUN set -eux; \
       if [ "$i" -eq 3 ]; then exit 1; fi; \
       sleep 2; \
     done
-COPY tools/lx32_backend /llvm-src/llvm/lib/Target/LX32
-RUN --mount=type=cache,target=/root/.cache/ccache \
-    cmake -S /llvm-src/llvm -B /llvm-build -G Ninja \
+# Copy only backend sources needed for LLVM target build so test/docs changes
+# do not invalidate the expensive toolchain layer.
+COPY tools/lx32_backend/CMakeLists.txt /llvm-src/llvm/lib/Target/LX32/CMakeLists.txt
+COPY tools/lx32_backend/TableGen /llvm-src/llvm/lib/Target/LX32/TableGen
+COPY tools/lx32_backend/TargetInfo /llvm-src/llvm/lib/Target/LX32/TargetInfo
+COPY tools/lx32_backend/MCTargetDesc /llvm-src/llvm/lib/Target/LX32/MCTargetDesc
+COPY tools/lx32_backend/AsmParser /llvm-src/llvm/lib/Target/LX32/AsmParser
+COPY tools/lx32_backend/core /llvm-src/llvm/lib/Target/LX32/core
+RUN --mount=type=cache,id=lx32-ccache,target=/root/.cache/ccache,sharing=locked \
+    ccache -z \
+    && cmake -S /llvm-src/llvm -B /llvm-build -G Ninja \
     -DLLVM_TARGETS_TO_BUILD="LX32" \
     -DCMAKE_BUILD_TYPE=Release -DLLVM_USE_LINKER=lld \
     -DLLVM_INCLUDE_TESTS=OFF -DLLVM_INCLUDE_BENCHMARKS=OFF -DLLVM_INCLUDE_EXAMPLES=OFF \
@@ -37,7 +48,10 @@ RUN --mount=type=cache,target=/root/.cache/ccache \
     && cd /llvm-src/llvm/lib/Target/LX32/TableGen \
     && LLVM_TBLGEN=/llvm-build/bin/llvm-tblgen LLVM_INCLUDE_DIR=/llvm-src/llvm/include bash ./compile_td.sh \
     && ninja -C /llvm-build -j"${LLVM_JOBS}" ${LLVM_BUILD_TARGETS} \
-    && printf '%s\n' "${BACKEND_COMMIT}" > /llvm-build/LX32_BACKEND_COMMIT
+    && ccache -s
+
+ARG BACKEND_COMMIT=unknown
+RUN printf '%s\n' "${BACKEND_COMMIT}" > /llvm-build/LX32_BACKEND_COMMIT
 
 # ── STAGE 2: RUNTIME ───────────────────────────────────────────
 FROM ubuntu:24.04 AS runtime

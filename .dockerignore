@@ -37,3 +37,7 @@ desktop.ini
 # We don't need the git history inside the image unless you use git commands there
 .git/
 
+# Local debug/repro dirs should never bust Docker build cache.
+.tmp/
+.repro/
+tools/lx32_backend/build/
