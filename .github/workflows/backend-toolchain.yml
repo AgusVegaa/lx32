@@ -23,6 +23,10 @@ permissions:
   contents: read
   packages: write
 
+env:
+  # Keep CI deterministic: avoid drift from a moving LLVM main branch.
+  LLVM_REF_PIN: 1124aa5a463f0d88df752564ca79023d0f690e60
+
 jobs:
   build-toolchain:
     runs-on: ubuntu-24.04
@@ -53,7 +57,7 @@ jobs:
           tags: lx32-runtime-ci:${{ github.sha }}
           load: true
           build-args: |
-            LLVM_REF=main
+            LLVM_REF=${{ env.LLVM_REF_PIN }}
             BACKEND_COMMIT=${{ github.sha }}
             LLVM_JOBS=${{ steps.cores.outputs.jobs }}
           cache-from: type=gha,scope=lx32-runtime-base
@@ -76,11 +80,13 @@ jobs:
         run: |
           set -euo pipefail
           docker run --rm \
+            -e EXPECTED_BACKEND_COMMIT="${GITHUB_SHA}" \
             -v "${GITHUB_WORKSPACE}:/workspace" \
             -w /workspace \
             lx32-runtime-ci:${GITHUB_SHA} \
             /bin/bash -lc '
               set -euo pipefail
+              test "$(cat /usr/local/share/LX32_BACKEND_COMMIT)" = "${EXPECTED_BACKEND_COMMIT}"
               LX32_LLVM_BIN=/usr/local/bin tools/lx32_backend/tests/baremetal/run_baremetal_smoke.sh deep
             '
 
