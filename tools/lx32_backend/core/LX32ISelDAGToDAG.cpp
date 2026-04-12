@@ -149,31 +149,12 @@ void LX32DAGToDAGISel::Select(SDNode *Node) {
         if (C->isZero())
           return CurDAG->getRegister(LX32::X0, MVT::i32);
 
-        // Branch instructions are reg-reg, so constants must be materialized.
-        int64_t SImm = C->getSExtValue();
-        if (isInt<12>(SImm)) {
-          SDNode *ImmReg = CurDAG->getMachineNode(
-              LX32::ADDI, DL, MVT::i32,
-              CurDAG->getRegister(LX32::X0, MVT::i32),
-              CurDAG->getTargetConstant(SImm, DL, MVT::i32));
-          return SDValue(ImmReg, 0);
-        }
-
-        uint64_t ZImm = C->getZExtValue();
-        uint64_t Hi20 = (ZImm + 0x800ULL) >> 12;
-        int64_t Lo12 = SignExtend64<12>(ZImm & 0xfffULL);
-
-        SDNode *Lui = CurDAG->getMachineNode(
-            LX32::LUI, DL, MVT::i32,
-            CurDAG->getTargetConstant(Hi20, DL, MVT::i32));
-
-        if (Lo12 == 0)
-          return SDValue(Lui, 0);
-
-        SDNode *Addi = CurDAG->getMachineNode(
-            LX32::ADDI, DL, MVT::i32, SDValue(Lui, 0),
-            CurDAG->getTargetConstant(Lo12, DL, MVT::i32));
-        return SDValue(Addi, 0);
+        // Branch pseudos are reg-reg; materialize constants through generic
+        // DAG nodes so normal isel/legal materialization handles host-neutrally.
+        return CurDAG->getNode(ISD::ADD, DL, MVT::i32,
+                               CurDAG->getRegister(LX32::X0, MVT::i32),
+                               CurDAG->getConstant(C->getSExtValue(), DL,
+                                                   MVT::i32));
       }
       return Op;
     };
