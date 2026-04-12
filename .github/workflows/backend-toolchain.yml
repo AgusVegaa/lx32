@@ -30,6 +30,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Detect runner cores
+        id: cores
+        run: echo "jobs=$(nproc)" >> "$GITHUB_OUTPUT"
+
       - name: Preflight Docker context
         run: |
           set -euo pipefail
@@ -38,17 +45,19 @@ jobs:
           test -f Dockerfile
 
       - name: Build runtime image with pinned toolchain
-        run: |
-          LLVM_JOBS="$(nproc)"
-          echo "Using LLVM_JOBS=${LLVM_JOBS}"
-          docker build \
-            --file Dockerfile \
-            --target runtime \
-            --tag lx32-runtime-ci:${GITHUB_SHA} \
-            --build-arg LLVM_REF=main \
-            --build-arg BACKEND_COMMIT="${GITHUB_SHA}" \
-            --build-arg LLVM_JOBS="${LLVM_JOBS}" \
-            .
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          target: runtime
+          tags: lx32-runtime-ci:${{ github.sha }}
+          load: true
+          build-args: |
+            LLVM_REF=main
+            BACKEND_COMMIT=${{ github.sha }}
+            LLVM_JOBS=${{ steps.cores.outputs.jobs }}
+          cache-from: type=gha,scope=lx32-runtime-base
+          cache-to: type=gha,mode=max,scope=lx32-runtime-base
 
       - name: Extract versioned toolchain payload
         run: |
@@ -83,6 +92,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Download toolchain artifact
         uses: actions/download-artifact@v4
         with:
@@ -103,14 +115,22 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push runtime image that consumes the artifact payload
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.runtime
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/lx32-runtime:${{ github.sha }}
+          push: true
+          cache-from: type=gha,scope=lx32-runtime-publish
+          cache-to: type=gha,mode=max,scope=lx32-runtime-publish
+
+      - name: Tag latest on portability branch
+        if: github.ref_name == 'refactor/portability'
         run: |
           set -euo pipefail
           IMAGE="ghcr.io/${{ github.repository_owner }}/lx32-runtime"
-          docker build -f Dockerfile.runtime -t "${IMAGE}:${GITHUB_SHA}" .
-          docker push "${IMAGE}:${GITHUB_SHA}"
-
-          if [ "${GITHUB_REF_NAME}" = "main" ]; then
-            docker tag "${IMAGE}:${GITHUB_SHA}" "${IMAGE}:latest"
-            docker push "${IMAGE}:latest"
-          fi
+          docker pull "${IMAGE}:${GITHUB_SHA}"
+          docker tag "${IMAGE}:${GITHUB_SHA}" "${IMAGE}:latest"
+          docker push "${IMAGE}:latest"
 
