@@ -14,9 +14,15 @@ ARG LLVM_JOBS=4
 ARG LLVM_BUILD_TARGETS="llc llvm-mc llvm-objcopy"
 RUN set -eux; \
     for i in 1 2 3; do \
-      git clone --depth=1 --branch "${LLVM_REF}" "${LLVM_REPO}" /llvm-src && break; \
-      if [ "$i" -eq 3 ]; then exit 1; fi; \
       rm -rf /llvm-src; \
+      mkdir -p /llvm-src; \
+      git -C /llvm-src init -q; \
+      git -C /llvm-src remote add origin "${LLVM_REPO}"; \
+      if git -C /llvm-src fetch --depth=1 origin "${LLVM_REF}"; then \
+        git -C /llvm-src checkout --detach -q FETCH_HEAD; \
+        break; \
+      fi; \
+      if [ "$i" -eq 3 ]; then exit 1; fi; \
       sleep 2; \
     done
 COPY tools/lx32_backend /llvm-src/llvm/lib/Target/LX32
