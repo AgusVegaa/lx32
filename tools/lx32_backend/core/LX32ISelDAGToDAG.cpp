@@ -89,8 +89,8 @@ void LX32DAGToDAGISel::Select(SDNode *Node) {
 
     // Create a PseudoBR pseudo-instruction that will be expanded later
     SmallVector<SDValue, 2> BrOps;
-    BrOps.push_back(Chain);
     BrOps.push_back(Target);
+    BrOps.push_back(Chain);
     SDNode *Jump = CurDAG->getMachineNode(
         LX32::PseudoBR, DL, MVT::Other, BrOps);
     ReplaceNode(Node, Jump);
@@ -176,11 +176,11 @@ void LX32DAGToDAGISel::Select(SDNode *Node) {
       report_fatal_error("lx32: unsupported BRCC condition code");
     }
 
-    SmallVector<SDValue, 5> BrOps;
-    BrOps.push_back(Node->getOperand(0)); // chain
+    SmallVector<SDValue, 4> BrOps;
     BrOps.push_back(normalizeBranchOperand(LHS));
     BrOps.push_back(normalizeBranchOperand(RHS));
     BrOps.push_back(Target);
+    BrOps.push_back(Node->getOperand(0)); // chain
     SDNode *Br = CurDAG->getMachineNode(BrOpc, DL, MVT::Other, BrOps);
     ReplaceNode(Node, Br);
     return;
@@ -201,13 +201,3 @@ FunctionPass *llvm::createLX32ISelDag(LX32TargetMachine &TM,
                                       CodeGenOptLevel OptLevel) {
   return new LX32DAGToDAGISelLegacy(TM, OptLevel);
 }
-
-
-
-
-
-
-
-
-
-
