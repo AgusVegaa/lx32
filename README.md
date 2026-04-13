@@ -24,7 +24,6 @@ PULSAR takes a different approach:
 - Read everything in parallel  
 - Eliminate debounce at the source  
 - Remove unnecessary waiting between input and output  
-asd;lkas;ldkl;askdl;askd;laskd;laskdl;aks dlkas ld;k asl;dk asl;dkals;kdl;ask;dksal;dkla;sdkla;skd la;skdl;askdl;aksld;jaslk djklas jdklas dklajs dkljaskdljaskdj askldjaksljd kasljdklasjdklasjdkljaskldjlaksjdklajsdklajsdjasdlkjaslkdjlaksjdlkajsdlkjaslkdjlkasjdklajsdkljaskldjklasjdklasjdlkajsldkjasldkjaklsjdklasdjkldsajdklj
 ---
 
 ## What makes it different
