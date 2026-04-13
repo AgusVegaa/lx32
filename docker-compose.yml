@@ -1,0 +1,18 @@
+services:
+  lx32:
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        LLVM_REF: main
+        BACKEND_COMMIT: b36e378d8a3c705bdc46ccf7c770ea7edf391d8f
+    image: axel84727/lx32-dev:b36e378
+    environment:
+      - LX32_LLVM_BIN=${LX32_LLVM_BIN:-/usr/local/bin}
+      - LX32_CLANG=${LX32_CLANG:-/usr/bin/clang}
+    volumes:
+      - .:/workspace
+    stdin_open: true
+    tty: true
+    command: /bin/bash

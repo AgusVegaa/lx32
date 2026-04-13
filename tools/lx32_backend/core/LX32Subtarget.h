@@ -67,7 +67,7 @@
 //===----------------------------------------------------------------------===//
 
 #define GET_SUBTARGETINFO_HEADER
-#include "../TableGen/LX32GenSubtargetInfo.inc"
+#include "LX32GenSubtargetInfo.inc"
 
 namespace llvm {
 

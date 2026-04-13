@@ -21,25 +21,70 @@ OUT_O="${OUT_PREFIX}.o"
 # (e.g. MUL/div libcalls) via frontend optimizations.
 LX32_C_OLEVEL="${LX32_C_OLEVEL:-0}"
 LX32_BACKEND_DEBUG="${LX32_BACKEND_DEBUG:-0}"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 
 pick_llvm_bin() {
   local name="$1"
-  if [[ -x "/Users/axel/llvm-project/build/bin/$name" ]]; then
-    echo "/Users/axel/llvm-project/build/bin/$name"
+  local override_var="$2"
+  local explicit="${!override_var:-}"
+
+  if [[ -n "$explicit" && -x "$explicit" ]]; then
+    echo "$explicit"
     return
   fi
+
+  if [[ -n "${LX32_LLVM_BIN:-}" && -x "${LX32_LLVM_BIN}/$name" ]]; then
+    echo "${LX32_LLVM_BIN}/$name"
+    return
+  fi
+
+  if [[ -n "${LLVM_DIR:-}" && -x "${LLVM_DIR}/build/bin/$name" ]]; then
+    echo "${LLVM_DIR}/build/bin/$name"
+    return
+  fi
+
+  if [[ -x "$REPO_ROOT/.llvm/build/bin/$name" ]]; then
+    echo "$REPO_ROOT/.llvm/build/bin/$name"
+    return
+  fi
+
+  if [[ -x "/usr/local/bin/$name" ]]; then
+    echo "/usr/local/bin/$name"
+    return
+  fi
+
   command -v "$name"
 }
 
-CLANG="$(pick_llvm_bin clang || true)"
-LLC="$(pick_llvm_bin llc || true)"
+sed_in_place() {
+  local file="$1"
+  shift
+  # macOS/BSD sed requires a backup suffix argument for -i.
+  if [[ "$(uname -s)" == "Darwin" ]]; then
+    sed -E -i '' "$@" "$file"
+  else
+    sed -E -i "$@" "$file"
+  fi
+}
+
+CLANG="$(pick_llvm_bin clang LX32_CLANG || true)"
+LLC="$(pick_llvm_bin llc LX32_LLC || true)"
 
 if [[ -z "$CLANG" || ! -x "$CLANG" ]]; then
   echo "error: clang not found" >&2
+  echo "hint : set LX32_LLVM_BIN or LX32_CLANG to your LLVM bin directory" >&2
   exit 1
 fi
 if [[ -z "$LLC" || ! -x "$LLC" ]]; then
   echo "error: llc not found" >&2
+  echo "hint : set LX32_LLVM_BIN or LX32_LLC to your LLVM bin directory" >&2
+  exit 1
+fi
+
+if ! "$LLC" --version 2>/dev/null | grep -qi "lx32"; then
+  echo "error: selected llc does not report an lx32 target: $LLC" >&2
+  echo "hint : point LX32_LLVM_BIN to the LLVM build that includes the LX32 backend" >&2
   exit 1
 fi
 
@@ -57,6 +102,7 @@ LLC_COMMON=(
   -march=lx32
   -mcpu=generic
   -mtriple=lx32-unknown-elf
+  -O0
 )
 
 if [[ "$LX32_BACKEND_DEBUG" == "1" ]]; then
@@ -93,11 +139,9 @@ else
   C_TARGET="generic 32-bit (fallback IR target)"
 
   # Normalise target attributes so llc -march=lx32 does not inherit an incorrect CPU.
-  # macOS sed requires an explicit empty suffix for in-place editing.
-  sed -E -i '' \
+  sed_in_place "$OUT_LL" \
     -e 's/"target-cpu"="[^"]*"/"target-cpu"="generic"/g' \
-    -e 's/"target-features"="[^"]*"/"target-features"=""/g' \
-    "$OUT_LL"
+    -e 's/"target-features"="[^"]*"/"target-features"=""/g'
 fi
 
 run_llc_or_die asm "$OUT_S" "$OUT_LL"

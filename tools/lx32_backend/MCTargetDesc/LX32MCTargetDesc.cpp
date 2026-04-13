@@ -41,21 +41,21 @@
 //   error: use of undeclared identifier 'LX32'
 
 #define GET_REGINFO_ENUM
-#include "../TableGen/LX32GenRegisterInfo.inc"
+#include "LX32GenRegisterInfo.inc"
 
 #define GET_INSTRINFO_ENUM
-#include "../TableGen/LX32GenInstrInfo.inc"
+#include "LX32GenInstrInfo.inc"
 
 // Now pull in the generated Init* functions and createLX32MCSubtargetInfoImpl.
 #define GET_INSTRINFO_MC_DESC
-#include "../TableGen/LX32GenInstrInfo.inc"
+#include "LX32GenInstrInfo.inc"
 
 #define GET_REGINFO_MC_DESC
-#include "../TableGen/LX32GenRegisterInfo.inc"
+#include "LX32GenRegisterInfo.inc"
 
 // Emits: createLX32MCSubtargetInfoImpl(), LX32WriteProcResTable, etc.
 #define GET_SUBTARGETINFO_MC_DESC
-#include "../TableGen/LX32GenSubtargetInfo.inc"
+#include "LX32GenSubtargetInfo.inc"
 
 using namespace llvm;
 

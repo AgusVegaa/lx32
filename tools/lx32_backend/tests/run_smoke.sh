@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-
-ROOT="/Users/axel/lx32/tools/lx32_backend/tests"
+ROOT="$(cd "$(dirname "$0")" && pwd)"
 SMOKE_DIR="$ROOT/smoke"
 LX32_CPU="${LX32_CPU:-generic}"
 
@@ -10,8 +9,8 @@ pick_llc() {
     echo "$1"
     return
   fi
-  if [[ -x "/Users/axel/llvm-project/build/bin/llc" ]]; then
-    echo "/Users/axel/llvm-project/build/bin/llc"
+  if [[ -x "/usr/local/bin/llc" ]]; then
+    echo "/usr/local/bin/llc"
     return
   fi
   command -v llc
@@ -61,6 +60,15 @@ run_one() {
     fi
   fi
 
+  if [[ "$name" == "branch.ll" ]]; then
+    if [[ "$out" != *"BEQ"* && "$out" != *"BNE"* && "$out" != *"BLT"* &&
+          "$out" != *"BGE"* && "$out" != *"BLTU"* && "$out" != *"BGEU"* ]]; then
+      echo "FAIL $name: expected asm to contain a conditional branch"
+      echo "$out"
+      return 1
+    fi
+  fi
+
   echo "PASS $name"
 }
 
@@ -68,10 +76,6 @@ run_one "$SMOKE_DIR/ret0.ll"
 run_one "$SMOKE_DIR/add.ll"
 run_one "$SMOKE_DIR/bigconst.ll"
 run_one "$SMOKE_DIR/call.ll"
+run_one "$SMOKE_DIR/branch.ll"
 
 echo "smoke tests passed"
-
-
-
-
-

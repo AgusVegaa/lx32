@@ -40,6 +40,13 @@ def SDT_LX32Ret : SDTypeProfile<0, 0, []>;
 def LX32ret : SDNode<"LX32ISD::RET", SDT_LX32Ret,
                      [SDNPHasChain, SDNPOptInGlue, SDNPVariadic]>;
 
+// BRCC node used by custom BR_CC lowering.
+// Operand order in patterns is (lhs, rhs, cond, target), with chain implicit.
+def SDT_LX32BrCC : SDTypeProfile<0, 4, [SDTCisSameAs<0, 1>,
+                                        SDTCisVT<2, OtherVT>,
+                                        SDTCisVT<3, OtherVT>]>;
+def LX32brcc : SDNode<"LX32ISD::BRCC", SDT_LX32BrCC, [SDNPHasChain]>;
+
 // Load pattern fragments — model sign- and zero-extending sub-word loads.
 // These wrap the generic LLVM load nodes so that the instruction patterns
 // in Section 5 can match them with a single, readable name.
@@ -459,12 +466,12 @@ let isPseudo = 1, hasSideEffects = 0, mayLoad = 0, mayStore = 0 in {
     let isReturn    = 1;
     let isTerminator = 1;
     let isBarrier   = 1;
-    // Keep return-value registers live across RA so return-copy chains are not
-    // deleted as dead defs before pseudo expansion.
-    let Uses        = [X1, X10, X11];
+    // Keep ra and primary integer return register live at function exit.
+    let Uses        = [X1, X10];
   }
 
-  def PseudoBR : LX32Pseudo<(outs), (ins simm21:$target), "br\t$target", []> {
+  def PseudoBR : LX32Pseudo<(outs), (ins simm21:$target), "br\t$target",
+                             [(br bb:$target)]> {
     let isTerminator = 1;
     let isBranch     = 1;
     let isBarrier    = 1;
@@ -560,3 +567,20 @@ let isPseudo = 1, isCodeGenOnly = 1, Namespace = "LX32" in {
   }
 
 } // isPseudo = 1, isCodeGenOnly = 1
+
+// Match LX32 custom BRCC nodes to conditional branch pseudos.
+multiclass LX32BccPat<CondCode Cond, Instruction Inst> {
+  def : Pat<(LX32brcc (i32 GPR:$rs1), GPR:$rs2, Cond, bb:$target),
+            (Inst GPR:$rs1, GPR:$rs2, bb:$target)>;
+  // Make compare-against-zero explicit to avoid relying on late coalescing.
+  def : Pat<(LX32brcc (i32 GPR:$rs1), 0, Cond, bb:$target),
+            (Inst GPR:$rs1, (i32 X0), bb:$target)>;
+}
+
+defm : LX32BccPat<SETEQ, PseudoBEQ>;
+defm : LX32BccPat<SETNE, PseudoBNE>;
+defm : LX32BccPat<SETLT, PseudoBLT>;
+defm : LX32BccPat<SETGE, PseudoBGE>;
+defm : LX32BccPat<SETULT, PseudoBLTU>;
+defm : LX32BccPat<SETUGE, PseudoBGEU>;
+

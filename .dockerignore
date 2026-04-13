@@ -1,0 +1,43 @@
+# ── Simulation & Hardware Artifacts ───────────────────────────
+# We don't want old simulation results inside our clean image
+.sim/
+.formal/
+sim/
+*.vcd
+*.out
+*.vvp
+*.log
+
+# ── Rust / Toolchain ──────────────────────────────────────────
+# CRITICAL: Do NOT copy the 'target' folder. 
+# It contains binaries compiled for macOS, which won't work in Linux/Docker.
+# Let the container build its own Linux-native binaries.
+**/target/
+**/*.vo
+**/*.vok
+**/*.vos
+**/*.glob
+**/.*.aux
+**/.lia.cache
+**/*.tv
+
+# ── LLVM Backend ──────────────────────────────────────────────
+# We don't copy the local .llvm folder because the Dockerfile 
+# either clones it or uses the pre-installed one in /usr/local.
+.llvm/
+
+# ── IDE & System Junk ─────────────────────────────────────────
+.idea/
+.vscode/
+.DS_Store
+*.swp
+desktop.ini
+
+# ── Git ───────────────────────────────────────────────────────
+# We don't need the git history inside the image unless you use git commands there
+.git/
+
+# Local debug/repro dirs should never bust Docker build cache.
+.tmp/
+.repro/
+tools/lx32_backend/build/

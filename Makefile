@@ -26,7 +26,7 @@ ifeq ($(UNAME_S),Darwin)
 else
   # Linux (apt or general)
   VERILATOR_ROOT := /usr/share/verilator
-endif
+endif	
 VERILATOR_INC := $(VERILATOR_ROOT)/include
 
 VALIDATOR_DIR := tools/lx32_validator
@@ -214,20 +214,22 @@ formal-all: formal-sva formal-lec ## Run full formal hardware suite (SVA + LEC)
 # ======================
 # LX32 Backend Targets
 # ======================
-LLVM_DIR     ?= $(HOME)/llvm-project
+LLVM_DIR     ?= $(CURDIR)/.llvm
+LX32_LLVM_BIN ?= $(if $(wildcard $(LLVM_DIR)/build/bin/llc),$(LLVM_DIR)/build/bin,/usr/local/bin)
 BACKEND_SRC  := $(CURDIR)/tools/lx32_backend
-LLVM_REPO    := https://github.com/llvm/llvm-project
+LLVM_REPO    := https://github.com/Axel84727/llvm-project-lx32.git
 NPROC        := $(shell nproc 2>/dev/null || sysctl -n hw.logicalcpu)
 LLD_EXISTS   := $(shell which lld 2>/dev/null)
+LLVM_BRANCH ?= main
 
 .PHONY: check-llvm install-backend build-backend setup-backend test-baremetal test-baremetal-deep compile-c
 
 check-llvm: ## Check LLVM, clone if missing
-	@if [ -d "$(LLVM_DIR)" ]; then \
+	@if [ -d "$(LLVM_DIR)/.git" ]; then \
 		echo "✓ LLVM found at $(LLVM_DIR)"; \
 	else \
 		echo "→ Cloning LLVM..."; \
-		git clone --depth=1 $(LLVM_REPO) $(LLVM_DIR); \
+		git clone --depth=1 --branch $(LLVM_BRANCH) $(LLVM_REPO) $(LLVM_DIR); \
 		echo "✓ LLVM cloned"; \
 	fi
 
@@ -265,22 +267,22 @@ setup-backend: build-backend ## Full setup: clone, link, build
 
 test-baremetal: ## Run baremetal C smoke tests using the LX32 backend
 	@echo "→ Running baremetal tests..."
-	@cd $(BACKEND_SRC)/tests/baremetal && ./run_baremetal_smoke.sh
+	@cd $(BACKEND_SRC)/tests/baremetal && LX32_LLVM_BIN="$(LX32_LLVM_BIN)" ./run_baremetal_smoke.sh
 
 test-baremetal-deep: ## Run extended baremetal C tests (loops/comparisons/fibonacci)
 	@echo "→ Running deep baremetal tests..."
-	@cd $(BACKEND_SRC)/tests/baremetal && ./run_baremetal_smoke.sh deep
+	@cd $(BACKEND_SRC)/tests/baremetal && LX32_LLVM_BIN="$(LX32_LLVM_BIN)" ./run_baremetal_smoke.sh deep
 
 compile-c: ## Compile, assemble, and link a custom C file (usage: make compile-c PROG=my_prog.c)
 	@if [ -z "$(PROG)" ]; then echo "ERROR: compile-c requires PROG=<path_to_c_file>"; exit 2; fi
 	@if [ ! -f "$(PROG)" ]; then echo "ERROR: File $(PROG) not found"; exit 2; fi
 	@echo "→ Compiling $(PROG) to LX32 object..."
-	@bash $(BACKEND_SRC)/tests/compile_baremetal_c.sh "$(PROG)"
+	@LX32_LLVM_BIN="$(LX32_LLVM_BIN)" bash $(BACKEND_SRC)/tests/compile_baremetal_c.sh "$(PROG)"
 	@echo "→ Assembling crt0.S..."
-	@$(LLVM_DIR)/build/bin/llvm-mc -arch=lx32 -filetype=obj $(BACKEND_SRC)/tests/baremetal/crt0.S -o $(BACKEND_SRC)/tests/baremetal/crt0.o
+	@$(LX32_LLVM_BIN)/llvm-mc -arch=lx32 -filetype=obj $(BACKEND_SRC)/tests/baremetal/crt0.S -o $(BACKEND_SRC)/tests/baremetal/crt0.o
 	@echo "→ Linking into ELF and flat Binary..."
-	@$(LLVM_DIR)/build/bin/ld.lld -T $(BACKEND_SRC)/tests/baremetal/link.ld $(BACKEND_SRC)/tests/baremetal/crt0.o "$${PROG%.*}.o" -o "$${PROG%.*}.elf"
-	@$(LLVM_DIR)/build/bin/llvm-objcopy -O binary "$${PROG%.*}.elf" "$${PROG%.*}.bin"
+	@$(LX32_LLVM_BIN)/ld.lld -T $(BACKEND_SRC)/tests/baremetal/link.ld $(BACKEND_SRC)/tests/baremetal/crt0.o "$${PROG%.*}.o" -o "$${PROG%.*}.elf"
+	@$(LX32_LLVM_BIN)/llvm-objcopy -O binary "$${PROG%.*}.elf" "$${PROG%.*}.bin"
 	@echo "✓ Success! Generated $${PROG%.*}.elf and $${PROG%.*}.bin"
 
 run-binary: librust ## Run a custom LX32 binary on the RTL simulation (usage: make run-binary BIN=my_program.bin)

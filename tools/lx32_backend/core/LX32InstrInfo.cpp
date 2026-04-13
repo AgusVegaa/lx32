@@ -39,7 +39,7 @@
 //===----------------------------------------------------------------------===//
 
 #define GET_INSTRINFO_CTOR_DTOR
-#include "../TableGen/LX32GenInstrInfo.inc"
+#include "LX32GenInstrInfo.inc"
 
 using namespace llvm;
 
@@ -227,15 +227,27 @@ bool LX32InstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
         continue;
       RegOps.push_back(MO);
     }
-    if (RegOps.size() < 2)
+    if (RegOps.empty())
       report_fatal_error("lx32: malformed conditional-branch pseudo operands");
-    if (!TargetMBBOp)
+    if (RegOps.size() == 1)
+      // Compare-against-zero forms may surface as a single explicit register
+      // plus an omitted `$noreg` operand after ISel.
+      RegOps.insert(RegOps.begin(), MachineOperand::CreateReg(LX32::X0, false));
+    MachineBasicBlock *TargetMBB = nullptr;
+    if (TargetMBBOp)
+      TargetMBB = TargetMBBOp->getMBB();
+    else if (!MBB.succ_empty())
+      // ISel may leave branch pseudos without an explicit MBB operand.
+      // In that case, keep the first CFG successor as the conditional edge.
+      TargetMBB = *MBB.succ_begin();
+
+    if (!TargetMBB)
       report_fatal_error("lx32: conditional branch pseudo missing target MBB");
 
     auto MIB = BuildMI(MBB, MI, DL, get(RealOpc));
     MIB->addOperand(RegOps[RegOps.size() - 2]);
     MIB->addOperand(RegOps[RegOps.size() - 1]);
-    MIB->addOperand(*TargetMBBOp);
+    MIB.addMBB(TargetMBB);
     MBB.erase(MI);
     return true;
   };
