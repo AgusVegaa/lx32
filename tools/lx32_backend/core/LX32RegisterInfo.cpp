@@ -46,7 +46,7 @@
 //===----------------------------------------------------------------------===//
 
 #define GET_REGINFO_TARGET_DESC
-#include "../TableGen/LX32GenRegisterInfo.inc"
+#include "LX32GenRegisterInfo.inc"
 
 
 using namespace llvm;

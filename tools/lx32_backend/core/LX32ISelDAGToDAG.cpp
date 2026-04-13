@@ -13,7 +13,6 @@
 
 #include "llvm/CodeGen/MachineFunctionPass.h"
 #include "llvm/CodeGen/SelectionDAGISel.h"
-#include "llvm/Support/MathExtras.h"
 #include "llvm/Support/ErrorHandling.h"
 
 #include <memory>
@@ -42,7 +41,7 @@ private:
   void SelectFrameIndex(SDNode *Node);
 
   // Include the auto-generated selection matcher.
-  #include "../TableGen/LX32GenDAGISel.inc"
+  #include "LX32GenDAGISel.inc"
 };
 
 class LX32DAGToDAGISelLegacy : public SelectionDAGISelLegacy {
@@ -79,21 +78,6 @@ void LX32DAGToDAGISel::Select(SDNode *Node) {
   }
 
   switch (Node->getOpcode()) {
-  case ISD::BR: {
-    SDLoc DL(Node);
-
-    if (Node->getNumOperands() < 2)
-      report_fatal_error("lx32: malformed BR node");
-
-    SDValue Chain = Node->getOperand(0);
-    SDValue Target = Node->getOperand(1);
-
-    // Create a PseudoBR pseudo-instruction that will be expanded later
-    SDNode *Jump = CurDAG->getMachineNode(
-        LX32::PseudoBR, DL, MVT::Other, Chain, Target);
-    ReplaceNode(Node, Jump);
-    return;
-  }
   case LX32ISD::CALL: {
     SDLoc DL(Node);
 
@@ -106,8 +90,8 @@ void LX32DAGToDAGISel::Select(SDNode *Node) {
       report_fatal_error("lx32: CALL expects target global/external symbol");
 
     SmallVector<SDValue, 4> Ops;
+    Ops.push_back(Callee);              // explicit call target symbol
     Ops.push_back(Node->getOperand(0)); // chain
-    Ops.push_back(Callee);              // direct call target symbol
     if (Node->getNumOperands() > 2)
       Ops.push_back(Node->getOperand(2)); // optional glue
 
@@ -127,36 +111,30 @@ void LX32DAGToDAGISel::Select(SDNode *Node) {
     ReplaceNode(Node, Ret);
     return;
   }
-  case ISD::BR_CC: {
+  case LX32ISD::BRCC: {
     SDLoc DL(Node);
     if (Node->getNumOperands() < 5)
-      report_fatal_error("lx32: malformed BR_CC node");
+      report_fatal_error("lx32: malformed BRCC node");
 
-    const auto *CCNode = dyn_cast<CondCodeSDNode>(Node->getOperand(1));
-    if (!CCNode)
-      report_fatal_error("lx32: BR_CC missing condition code");
-
-    SDValue Chain = Node->getOperand(0);
-    // LX32 BR_CC nodes arrive as: chain, cc, rhs, target, lhs.
-    // Keep names aligned with semantic role (lhs/rhs), not raw index.
+    // Canonical BRCC order is: chain, lhs, rhs, cc, target.
+    SDValue LHS = Node->getOperand(1);
     SDValue RHS = Node->getOperand(2);
-    SDValue Target = Node->getOperand(3);
-    SDValue LHS = Node->getOperand(4);
+    const auto *CCNode = dyn_cast<CondCodeSDNode>(Node->getOperand(3));
+    SDValue Target = Node->getOperand(4);
+    if (!CCNode)
+      report_fatal_error("lx32: BRCC missing condition code");
 
-    auto emitCondPseudo = [&](unsigned Opc, SDValue OpA, SDValue OpB) {
-      SmallVector<SDValue, 4> BrOps;
-      BrOps.push_back(Chain);
-      BrOps.push_back(OpA);
-      BrOps.push_back(OpB);
-      BrOps.push_back(Target);
-      SDNode *Br = CurDAG->getMachineNode(Opc, DL, MVT::Other, BrOps);
-      ReplaceNode(Node, Br);
-      return;
+    auto normalizeBranchOperand = [&](SDValue Op) -> SDValue {
+      if (const auto *C = dyn_cast<ConstantSDNode>(Op)) {
+        if (C->isZero())
+          return CurDAG->getRegister(LX32::X0, MVT::i32);
+        report_fatal_error(
+            "lx32: BRCC non-zero constants must be materialized in lowering");
+      }
+      return Op;
     };
 
     unsigned BrOpc = 0;
-    bool Swap = false;
-
     switch (CCNode->get()) {
     case ISD::SETEQ:
       BrOpc = LX32::PseudoBEQ;
@@ -176,41 +154,21 @@ void LX32DAGToDAGISel::Select(SDNode *Node) {
     case ISD::SETUGE:
       BrOpc = LX32::PseudoBGEU;
       break;
-    case ISD::SETGT:
-      // Keep the historical ordering used by this backend for signed GT.
-      // This path is intentionally explicit because generic swap handling
-      // does not produce equivalent semantics with the current BR_CC layout.
-      {
-        SmallVector<SDValue, 4> BrOps;
-        BrOps.push_back(Chain);
-        BrOps.push_back(LHS);
-        BrOps.push_back(Target);
-        BrOps.push_back(RHS);
-        SDNode *Br = CurDAG->getMachineNode(LX32::PseudoBLT, DL, MVT::Other, BrOps);
-        ReplaceNode(Node, Br);
-      }
-      return;
-    case ISD::SETLE:
-      BrOpc = LX32::PseudoBGE;
-      Swap = true;
-      break;
-    case ISD::SETUGT:
-      BrOpc = LX32::PseudoBLTU;
-      Swap = true;
-      break;
-    case ISD::SETULE:
-      BrOpc = LX32::PseudoBGEU;
-      Swap = true;
-      break;
     default:
-      report_fatal_error("lx32: unsupported BR_CC condition code");
+      report_fatal_error("lx32: unsupported BRCC condition code");
     }
 
-    SDValue Op0 = Swap ? RHS : LHS;
-    SDValue Op1 = Swap ? LHS : RHS;
-    emitCondPseudo(BrOpc, Op0, Op1);
+    SmallVector<SDValue, 4> BrOps;
+    BrOps.push_back(normalizeBranchOperand(LHS));
+    BrOps.push_back(normalizeBranchOperand(RHS));
+    BrOps.push_back(Target);
+    BrOps.push_back(Node->getOperand(0)); // chain
+    SDNode *Br = CurDAG->getMachineNode(BrOpc, DL, MVT::Other, BrOps);
+    ReplaceNode(Node, Br);
     return;
   }
+  case ISD::BR_CC:
+    report_fatal_error("lx32: unexpected generic BR_CC during instruction selection");
   case ISD::FrameIndex:
     SelectFrameIndex(Node);
     return;
@@ -225,13 +183,3 @@ FunctionPass *llvm::createLX32ISelDag(LX32TargetMachine &TM,
                                       CodeGenOptLevel OptLevel) {
   return new LX32DAGToDAGISelLegacy(TM, OptLevel);
 }
-
-
-
-
-
-
-
-
-
-

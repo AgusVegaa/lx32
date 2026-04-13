@@ -1,0 +1,4 @@
+services:
+  lx32:
+    platform: linux/arm64
+

@@ -11,3 +11,4 @@ add_llvm_component_library(LLVMLX32AsmParser
   ADD_TO_COMPONENT
   LX32
   )
+  add_dependencies(LLVMLX32AsmParser LX32CommonTableGen)

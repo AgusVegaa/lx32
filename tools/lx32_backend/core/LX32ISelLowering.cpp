@@ -19,7 +19,7 @@
 
 using namespace llvm;
 
-#include "../TableGen/LX32GenCallingConv.inc"
+#include "LX32GenCallingConv.inc"
 
 static SDValue lowerCCValue(SDValue Val, CCValAssign::LocInfo LocInfo,
                             EVT ValVT, SelectionDAG &DAG,
@@ -68,6 +68,14 @@ LX32TargetLowering::LX32TargetLowering(const TargetMachine &TM,
   // First functional slice: keep select lowering on generic expansion.
   setOperationAction(ISD::SELECT, MVT::i32, Expand);
 
+  // Keep setcc/branch boolean semantics explicit for DAG combines.
+  setBooleanContents(ZeroOrOneBooleanContent);
+
+  // Lower branches with explicit condition codes to a target node so the
+  // selector never has to re-interpret generic BR_CC/SETCC combinations.
+  setOperationAction(ISD::BR_CC, MVT::i32, Custom);
+  setOperationAction(ISD::BRCOND, MVT::Other, Custom);
+
   setOperationAction(ISD::GlobalAddress, MVT::i32, Expand);
   setOperationAction(ISD::BlockAddress, MVT::i32, Expand);
   setOperationAction(ISD::ConstantPool, MVT::i32, Expand);
@@ -85,9 +93,113 @@ const char *LX32TargetLowering::getTargetNodeName(unsigned Opcode) const {
     return "LX32ISD::CALL";
   case LX32ISD::SELECT_CC:
     return "LX32ISD::SELECT_CC";
+  case LX32ISD::BRCC:
+    return "LX32ISD::BRCC";
   default:
     return nullptr;
   }
+}
+
+SDValue LX32TargetLowering::lowerBR_CC(SDValue Op, SelectionDAG &DAG) const {
+  SDLoc DL(Op);
+
+  if (Op.getNumOperands() < 5)
+    report_fatal_error("lx32: malformed BR_CC node");
+
+  const auto *CCNode = dyn_cast<CondCodeSDNode>(Op.getOperand(1));
+  if (!CCNode)
+    report_fatal_error("lx32: BR_CC missing condition code");
+
+  SDValue LHS = Op.getOperand(2);
+  SDValue RHS = Op.getOperand(3);
+  SDValue Target = Op.getOperand(4);
+
+  auto normalizeBranchOperand = [&](SDValue V) -> SDValue {
+    if (const auto *C = dyn_cast<ConstantSDNode>(V)) {
+      if (C->isZero())
+        return DAG.getRegister(LX32::X0, MVT::i32);
+
+      // Branch pseudos are reg-reg. Materialize constants early in lowering
+      // so DAGToDAG selection does not have to synthesize ad-hoc machine nodes.
+      return DAG.getNode(ISD::ADD, DL, MVT::i32,
+                         DAG.getRegister(LX32::X0, MVT::i32),
+                         DAG.getConstant(C->getSExtValue(), DL, MVT::i32));
+    }
+    return V;
+  };
+
+  ISD::CondCode CC = CCNode->get();
+  bool Swap = false;
+  switch (CC) {
+  case ISD::SETEQ:
+  case ISD::SETNE:
+  case ISD::SETLT:
+  case ISD::SETGE:
+  case ISD::SETULT:
+  case ISD::SETUGE:
+    break;
+  case ISD::SETGT:
+    CC = ISD::SETLT;
+    Swap = true;
+    break;
+  case ISD::SETLE:
+    CC = ISD::SETGE;
+    Swap = true;
+    break;
+  case ISD::SETUGT:
+    CC = ISD::SETULT;
+    Swap = true;
+    break;
+  case ISD::SETULE:
+    CC = ISD::SETUGE;
+    Swap = true;
+    break;
+  default:
+    report_fatal_error("lx32: unsupported BR_CC condition code");
+  }
+
+  SDValue Op0 = Swap ? RHS : LHS;
+  SDValue Op1 = Swap ? LHS : RHS;
+  Op0 = normalizeBranchOperand(Op0);
+  Op1 = normalizeBranchOperand(Op1);
+
+  // Keep the BRCC operand order aligned with common target patterns:
+  // chain, lhs, rhs, cond, target.
+  return DAG.getNode(LX32ISD::BRCC, DL, MVT::Other, Op.getOperand(0), Op0,
+                     Op1, DAG.getCondCode(CC), Target);
+}
+
+SDValue LX32TargetLowering::lowerBRCOND(SDValue Op, SelectionDAG &DAG) const {
+  SDLoc DL(Op);
+
+  if (Op.getNumOperands() < 3)
+    report_fatal_error("lx32: malformed BRCOND node");
+
+  SDValue Chain = Op.getOperand(0);
+  SDValue Cond = Op.getOperand(1);
+  SDValue Target = Op.getOperand(2);
+
+  if (Cond.getOpcode() == ISD::SETCC) {
+    SDValue LHS = Cond.getOperand(0);
+    SDValue RHS = Cond.getOperand(1);
+    auto *CCNode = dyn_cast<CondCodeSDNode>(Cond.getOperand(2));
+    if (!CCNode)
+      report_fatal_error("lx32: BRCOND SETCC missing condition code");
+
+    SDValue BrCC = DAG.getNode(ISD::BR_CC, DL, MVT::Other, Chain,
+                               DAG.getCondCode(CCNode->get()), LHS, RHS,
+                               Target);
+    return lowerBR_CC(BrCC, DAG);
+  }
+
+  // Generic i1 branch condition: branch when cond != 0.
+  if (Cond.getValueType() != MVT::i32)
+    Cond = DAG.getNode(ISD::ZERO_EXTEND, DL, MVT::i32, Cond);
+
+  SDValue BrCC = DAG.getNode(ISD::BR_CC, DL, MVT::Other, Chain,
+                             DAG.getCondCode(ISD::SETNE), Cond,
+                             DAG.getConstant(0, DL, MVT::i32), Target);
+  return lowerBR_CC(BrCC, DAG);
 }
 
 SDValue LX32TargetLowering::LowerFormalArguments(
@@ -271,6 +383,10 @@ SDValue LX32TargetLowering::LowerReturn(
 SDValue LX32TargetLowering::LowerOperation(SDValue Op,
                                            SelectionDAG &DAG) const {
   switch (Op.getOpcode()) {
+  case ISD::BR_CC:
+    return lowerBR_CC(Op, DAG);
+  case ISD::BRCOND:
+    return lowerBRCOND(Op, DAG);
   default:
     llvm_unreachable("lx32: unexpected custom-lowered operation");
   }

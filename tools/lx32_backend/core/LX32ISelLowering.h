@@ -78,6 +78,7 @@ class LX32Subtarget;
 // The mapping to assembly:
 //   LX32ISD::RET    → PseudoRET → JALR x0, ra, 0
 //   LX32ISD::CALL   → PseudoCALL (direct) or JALR rs, 0 (indirect)
+//   LX32ISD::BRCC   → PseudoB* (BEQ/BNE/BLT/BGE/BLTU/BGEU)
 //
 //===----------------------------------------------------------------------===//
 
@@ -107,6 +108,12 @@ enum NodeType : unsigned {
   // Produced by LowerSELECT_CC when the legalizer cannot handle ISD::SELECT
   // directly.  Lowered in LX32ISelDAGToDAG to a branch sequence.
   SELECT_CC,
+
+  // BRCC — conditional branch with explicit condition code.
+  //
+  // Produced by lowerBR_CC from ISD::BR_CC to keep branch condition handling
+  // target-specific and selected directly to PseudoB* opcodes.
+  BRCC,
 };
 } // namespace LX32ISD
 
@@ -245,6 +252,16 @@ private:
   //   SETGT  a, b  → b < a           → SLT b, a
   //   ... (unsigned variants use SLTU instead of SLT)
   SDValue lowerSETCC(SDValue Op, SelectionDAG &DAG) const;
+
+  // lowerBR_CC — lower ISD::BR_CC to LX32ISD::BRCC.
+  //
+  // Canonicalizes swapped predicates (e.g. GT -> LT with swapped operands)
+  // so instruction selection only needs direct branch mappings.
+  SDValue lowerBR_CC(SDValue Op, SelectionDAG &DAG) const;
+
+  // lowerBRCOND — lower ISD::BRCOND by canonicalizing the i1 condition into
+  // a BR_CC form handled by lowerBR_CC.
+  SDValue lowerBRCOND(SDValue Op, SelectionDAG &DAG) const;
 
   // lowerVASTART — lower ISD::VASTART for variadic function support.
   //

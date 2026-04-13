@@ -1,0 +1,12 @@
+services:
+  lx32:
+    image: ghcr.io/axel84727/lx32-runtime:${LX32_TOOLCHAIN_TAG:-latest}
+    environment:
+      - LX32_LLVM_BIN=${LX32_LLVM_BIN:-/usr/local/bin}
+      - LX32_CLANG=${LX32_CLANG:-/usr/bin/clang}
+    volumes:
+      - .:/workspace
+    stdin_open: true
+    tty: true
+    command: /bin/bash
+

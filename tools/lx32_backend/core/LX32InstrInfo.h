@@ -66,11 +66,11 @@
 // Pull in the TableGen-generated LX32 opcode enum first, then the
 // LX32GenInstrInfo class declaration.
 #define GET_INSTRINFO_ENUM
-#include "../TableGen/LX32GenInstrInfo.inc"
+#include "LX32GenInstrInfo.inc"
 
 // GET_INSTRINFO_HEADER emits the LX32GenInstrInfo class declaration.
 #define GET_INSTRINFO_HEADER
-#include "../TableGen/LX32GenInstrInfo.inc"
+#include "LX32GenInstrInfo.inc"
 
 namespace llvm {
 
