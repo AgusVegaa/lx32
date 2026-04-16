@@ -58,13 +58,12 @@ module lx32_system (
   logic [15:0] sensor_val, delta_val;
   logic [31:0] matrix_ptr;
   logic        chord_match;
-  logic        dma_report_req, dma_report_ack, dma_busy;
+  logic        dma_report_req;
   logic [31:0] dma_report_ptr;
 
   // MMIO decode wiring
   logic        sensor_mmio_req, dma_mmio_req;
   logic [31:0] sensor_mmio_rdata, dma_mmio_rdata;
-  logic        sensor_mmio_ack, dma_mmio_ack;
   logic        mmio_is_sensor, mmio_is_dma;
 
   // External memory interface gating
@@ -107,7 +106,9 @@ module lx32_system (
       wait_counter <= 32'h0;
       wait_consumed <= 1'b0;
     end else if (wait_start) begin
-      wait_counter <= rs1_data;
+      // Read cycle count from bits[11:7] (rd field): the LX32 compiler encodes
+      // lx.wait with the source register at rd, not rs1.
+      wait_counter <= wait_src_data;
       wait_consumed <= 1'b1;
     end else if (wait_active) begin
       wait_counter <= wait_counter - 32'd1;
@@ -148,10 +149,8 @@ module lx32_system (
     .chord_match(chord_match),
     .mmio_req   (sensor_mmio_req),
     .mmio_we    (mem_write),
-    .mmio_addr  (lsu_mem_addr),
-    .mmio_wdata (lsu_mem_wdata),
-    .mmio_rdata (sensor_mmio_rdata),
-    .mmio_ack   (sensor_mmio_ack)
+    .mmio_addr  (lsu_mem_addr[7:2]),
+    .mmio_rdata (sensor_mmio_rdata)
   );
 
   dma_controller dma_stub (
@@ -159,14 +158,11 @@ module lx32_system (
     .rst        (rst),
     .report_req (dma_report_req),
     .report_ptr (dma_report_ptr),
-    .report_ack (dma_report_ack),
-    .busy       (dma_busy),
     .mmio_req   (dma_mmio_req),
     .mmio_we    (mem_write),
-    .mmio_addr  (lsu_mem_addr),
+    .mmio_addr  (lsu_mem_addr[7:2]),
     .mmio_wdata (lsu_mem_wdata),
-    .mmio_rdata (dma_mmio_rdata),
-    .mmio_ack   (dma_mmio_ack)
+    .mmio_rdata (dma_mmio_rdata)
   );
 
   assign dma_report_req = custom_1 && (instr[14:12] == 3'b001);
@@ -185,16 +181,22 @@ module lx32_system (
   // ------------------------------------------------------------
   // Register File (RF)
   // ------------------------------------------------------------
+  // wait_src_data: the register at instr[11:7] (rd field).
+  // The LX32 compiler encodes lx.wait as: rd = cycle_count_reg, rs1 = x0.
+  // The RTL reads the cycle count from this port instead of rs1_data.
+  logic [31:0] wait_src_data;
+
   register_file rf (
-    .clk      (clk),
-    .rst      (rst),
-    .addr_rs1 (instr[19:15]),
-    .addr_rs2 (instr[24:20]),
-    .addr_rd  (instr[11:7]),
-    .data_rd  (rd_data),
-    .we       (reg_write),
-    .data_rs1 (rs1_data),
-    .data_rs2 (rs2_data)
+    .clk        (clk),
+    .rst        (rst),
+    .addr_rs1   (instr[19:15]),
+    .addr_rs2   (instr[24:20]),
+    .addr_rd    (instr[11:7]),
+    .data_rd    (rd_data),
+    .we         (reg_write),
+    .data_rs1   (rs1_data),
+    .data_rs2   (rs2_data),
+    .data_rd_src(wait_src_data)
   );
 
   // ------------------------------------------------------------

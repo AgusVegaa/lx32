@@ -22,7 +22,11 @@ module register_file (
   // Read Data Outputs
   // ------------------------------------------------------------
   output logic [31:0] data_rs1,
-  output logic [31:0] data_rs2
+  output logic [31:0] data_rs2,
+  // Read the register currently addressed by addr_rd.
+  // Used by lx32_system for lx.wait, which the LX32 compiler encodes with the
+  // cycle-count register at bits[11:7] (rd field) rather than bits[19:15] (rs1).
+  output logic [31:0] data_rd_src
 );
 
   // ============================================================
@@ -72,7 +76,8 @@ module register_file (
   // ------------------------------------------------------------
   // Asynchronous Read Ports
   // ------------------------------------------------------------
-  assign data_rs1 = regs_out[addr_rs1];
-  assign data_rs2 = regs_out[addr_rs2];
+  assign data_rs1    = regs_out[addr_rs1];
+  assign data_rs2    = regs_out[addr_rs2];
+  assign data_rd_src = regs_out[addr_rd];
 
 endmodule

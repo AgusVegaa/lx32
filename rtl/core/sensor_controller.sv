@@ -13,13 +13,11 @@ module sensor_controller (
 	// MMIO stub interface
 	input  logic        mmio_req,
 	input  logic        mmio_we,
-	input  logic [31:0] mmio_addr,
-	input  logic [31:0] mmio_wdata,
-	output logic [31:0] mmio_rdata,
-	output logic        mmio_ack
+	input  logic [5:0]  mmio_addr,   // word offset within 256-byte window (addr[7:2])
+	output logic [31:0] mmio_rdata
 );
 
-  import lx32_mmio_pkg::*;
+  import lx32_mmio_pkg::SENSOR_DATA_BASE;
 
   logic [15:0] sensors      [0:63];
   logic [15:0] prev_sensors [0:63];
@@ -41,12 +39,10 @@ module sensor_controller (
 
   always_ff @(posedge clk or posedge rst) begin
 	if (rst) begin
-	  mmio_ack   <= 1'b0;
 	  mmio_rdata <= 32'h0;
 	end else begin
-	  mmio_ack <= mmio_req;
 	  if (mmio_req && !mmio_we) begin
-		unique case (mmio_addr[7:2])
+		unique case (mmio_addr)
 		  6'h00: mmio_rdata <= {16'h0, sensor_val};
 		  6'h01: mmio_rdata <= matrix_ptr;
 		  6'h02: mmio_rdata <= {16'h0, delta_val};
@@ -58,5 +54,3 @@ module sensor_controller (
   end
 
 endmodule
-
-
