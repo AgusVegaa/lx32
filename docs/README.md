@@ -13,6 +13,9 @@ This README provides a comprehensive guide to the LX32 project documentation. It
   - [Test Modules](golden_model/tests/)
 - [RTL Reference](rtl/)
 - [Tools](tools/)
+- [LX32K A3 Custom Coverage](lx32k/a3_custom_coverage.md)
+- [LX32K A4 Backend Custom ISA Validation](lx32k/a4_backend_custom_isa_validation.md)
+- [LX32K A5 MMIO Decode Coverage](lx32k/a5_mmio_decode_coverage.md)
 
 ---
 
@@ -127,6 +130,7 @@ This README provides a comprehensive guide to the LX32 project documentation. It
 │       ├── imm_gen_tb.sv
 │       ├── lsu_tb.sv
 │       ├── lx32_system_tb.sv
+│       ├── lx32_mmio_decode_tb.sv
 │       ├── memory_sim_tb.sv
 │       ├── reg_generic_tb.sv
 │       └── register_file_tb.sv

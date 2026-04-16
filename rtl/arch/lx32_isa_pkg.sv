@@ -41,6 +41,12 @@ package lx32_isa_pkg;
     OP_OP        = 7'b0110011, // R-type ALU
 
     // -------------------------
+    // PULSAR Custom ISA (LX.SENSOR, etc)
+    // -------------------------
+    OP_CUSTOM_0  = 7'b0001011,
+    OP_CUSTOM_1  = 7'b0101011,
+
+    // -------------------------
     // Reserved / Fallback
     // -------------------------
     OP_INVALID   = 7'b0000000

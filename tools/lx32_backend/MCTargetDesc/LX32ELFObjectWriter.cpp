@@ -24,9 +24,9 @@ public:
 
 protected:
   unsigned getRelocType(const MCFixup &Fixup, const MCValue &Target, bool IsPCRel) const override {
-    if (Fixup.getKind() == (MCFixupKind)1 /* branch */)
+    if (Fixup.getKind() == (MCFixupKind)LX32Fixups::fixup_lx32_branch)
       return ELF::R_RISCV_BRANCH;
-    if (Fixup.getKind() == (MCFixupKind)2 /* jump */)
+    if (Fixup.getKind() == (MCFixupKind)LX32Fixups::fixup_lx32_jump)
       return ELF::R_RISCV_JAL;
     return ELF::R_RISCV_NONE; // R_NONE is always 0
   }

@@ -16,6 +16,7 @@
 #define LLVM_LIB_TARGET_LX32_MCTARGETDESC_LX32MCTARGETDESC_H
 
 #include "llvm/MC/MCTargetOptions.h"
+#include "llvm/MC/MCFixup.h"
 #include "llvm/Support/DataTypes.h"
 #include <memory>
 
@@ -39,6 +40,14 @@ MCAsmBackend *createLX32AsmBackend(const Target &T,
                                     const MCTargetOptions &Options);
 
 std::unique_ptr<MCObjectTargetWriter> createLX32ELFObjectWriter(uint8_t OSABI);
+
+namespace LX32Fixups {
+enum Fixups {
+  fixup_lx32_branch = FirstTargetFixupKind,
+  fixup_lx32_jump,
+  NumTargetFixupKinds
+};
+} // namespace LX32Fixups
 
 } // End llvm namespace
 

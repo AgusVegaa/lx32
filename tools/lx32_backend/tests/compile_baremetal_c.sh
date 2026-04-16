@@ -135,7 +135,14 @@ run_llc_or_die() {
 if "$CLANG" "${COMMON_CFLAGS[@]}" -target lx32-unknown-elf "$INPUT_C" -o "$OUT_LL" 2>/dev/null; then
   C_TARGET="lx32-unknown-elf"
 else
-  "$CLANG" "${COMMON_CFLAGS[@]}" -target i386-unknown-elf "$INPUT_C" -o "$OUT_LL" 2>/dev/null
+  if ! "$CLANG" "${COMMON_CFLAGS[@]}" -target i386-unknown-elf "$INPUT_C" -o "$OUT_LL" 2>/dev/null; then
+    echo "error: clang frontend failed to emit LLVM IR" >&2
+    echo "  input : $INPUT_C" >&2
+    echo "  clang : $CLANG" >&2
+    echo "hint : this can happen when __builtin_lx_* is not wired in this clang build" >&2
+    echo "hint : test manually with: $CLANG ${COMMON_CFLAGS[*]} -target i386-unknown-elf $INPUT_C -o $OUT_LL" >&2
+    exit 1
+  fi
   C_TARGET="generic 32-bit (fallback IR target)"
 
   # Normalise target attributes so llc -march=lx32 does not inherit an incorrect CPU.

@@ -154,21 +154,22 @@ The custom instructions occupy the `CUSTOM-0` and `CUSTOM-1` opcode spaces reser
 
 ## 5. `LX.WAIT` — Pipeline Suspension
 
-- **Syntax:** `LX.WAIT rd`
-- **Description:** Stalls the processor pipeline by preventing the fetch of new instructions for a precise number of clock cycles, specified by the value in `rd`. This is useful for fine-grained timing control, such as debouncing or synchronizing with external hardware.
+- **Syntax:** `LX.WAIT rs1`
+- **Description:** Stalls the processor pipeline by preventing the fetch of new instructions for a precise number of clock cycles, specified by the value in `rs1`. This is useful for fine-grained timing control, such as debouncing or synchronizing with external hardware.
 
 ### Specification
 
 - **Encoding:**
   - **Opcode:** `CUSTOM-1` (`0101011`)
   - **funct3:** `000`
-  - **Format:** I-Type (uses `rd` as the source operand).
-- **Latency:** **N cycles**, where N is the value in `rd`.
+  - **Format:** I-Type. The stall count is in `rs1` (bits[19:15]); `rd` and `imm12` are zero.
+- **Latency:** **N cycles**, where N is the value in `rs1`.
 - **Registers:**
-  - `rd` (source): The number of clock cycles to wait.
+  - `rs1` (source): The number of clock cycles to wait.
+  - `rd`: Unused; always zero in the encoding.
 - **Behavior under contention:**
   - Not applicable. This instruction directly controls the pipeline.
-- **Behavior (Simulación vs. Hardware):**
+- **Behavior (Simulation vs. Hardware):**
   - Identical. In both scenarios, the `control_unit` gates the program counter for exactly N cycles.
 - **C-language Built-in:**
   ```c

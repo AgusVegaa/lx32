@@ -1,0 +1,47 @@
+[package]
+name        = "pulsar-pac"
+version     = "0.1.0"
+edition     = "2021"
+description = "Peripheral Access Crate for the PULSAR LX32K keyboard processor"
+license     = "MIT"
+
+# The library is named `pulsar` so users write `use pulsar::sensor;` etc.
+[lib]
+name = "pulsar"
+
+# ── Lint configuration ────────────────────────────────────────────────────────
+[lints.rust]
+# `lx32` is a custom target arch unknown to the host compiler but valid when
+# targeting lx32-unknown-none-elf.  Suppress the "unexpected cfg" warning so
+# `cargo check` on a dev machine stays noise-free.
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(target_arch, values("lx32"))'] }
+
+# ── Features ──────────────────────────────────────────────────────────────────
+[features]
+# `rt` — include the Rust runtime (_start entry point + panic handler).
+#
+# Enable when building a standalone firmware binary.  Do NOT link crt0.o
+# alongside this feature — _start is already provided.
+#
+# Usage in your firmware's Cargo.toml:
+#   pulsar-pac = { path = "…/pulsar_pac", features = ["rt"] }
+rt = []
+
+# ── Examples ──────────────────────────────────────────────────────────────────
+[[example]]
+name              = "keyboard"
+required-features = ["rt"]
+
+# ── Profiles ──────────────────────────────────────────────────────────────────
+[profile.release]
+# Firmware lives in 4KB RAM — every byte counts.
+opt-level     = "z"    # size-optimized
+lto           = true   # link-time optimization across all crates
+panic         = "abort"
+codegen-units = 1      # single CGU for maximum LTO effectiveness
+strip         = "debuginfo"
+
+[profile.dev]
+# Even in dev builds, abort on panic — no stack unwinding on bare metal.
+panic         = "abort"
+opt-level     = 1      # enough to inline the PAC wrappers

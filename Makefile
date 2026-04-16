@@ -222,7 +222,7 @@ NPROC        := $(shell nproc 2>/dev/null || sysctl -n hw.logicalcpu)
 LLD_EXISTS   := $(shell which lld 2>/dev/null)
 LLVM_BRANCH ?= main
 
-.PHONY: check-llvm install-backend build-backend setup-backend test-baremetal test-baremetal-deep compile-c
+.PHONY: check-llvm install-backend build-backend setup-backend test-baremetal test-baremetal-deep compile-c run-binary bench-all bench-compile-tests bench-build-runner bench-run bench-summary
 
 check-llvm: ## Check LLVM, clone if missing
 	@if [ -d "$(LLVM_DIR)/.git" ]; then \
@@ -290,6 +290,159 @@ run-binary: librust ## Run a custom LX32 binary on the RTL simulation (usage: ma
 	@if [ ! -f "$(BIN)" ]; then echo "ERROR: File $(BIN) not found"; exit 2; fi
 	@echo "→ Running $(BIN) on LX32 RTL Simulation..."
 	@cd $(VALIDATOR_DIR) && cargo run --release --bin run_program -- --binary $(abspath $(BIN))
+
+# =============================================================================
+# Benchmark orchestration
+#
+# bench-all      Full pipeline: compile every C test → run on RTL → bench_results.json
+# bench-compile-tests  Recompile all C programs in tests/baremetal/programs/
+# bench-build-runner   Build the run_program binary in release mode
+# bench-run      Run pre-compiled binaries, write bench_results.json
+# bench-summary  Print a human-readable table from the last bench-all run
+#
+# Output file format: JSON array of objects, one per program.
+# Each object contains: program name, binary size, static instruction count,
+# exit status, exit code, total cycles, instructions committed, stall cycles,
+# IPC, dynamic instruction mix, and final register values.
+#
+# Parser note: the JSON array is always well-formed even when only a subset of
+# programs compiled/ran successfully (missing programs are simply absent from
+# the array).
+# =============================================================================
+
+BENCH_PROGRAMS_DIR := $(BACKEND_SRC)/tests/baremetal/programs
+BENCH_REPORT       := bench_results.json
+BENCH_RUNNER       := $(abspath $(VALIDATOR_DIR)/target/release/run_program)
+
+# Enumerate every .c file in the programs directory; derive .bin targets from them.
+BENCH_SRCS := $(wildcard $(BENCH_PROGRAMS_DIR)/*.c)
+
+.PHONY: bench-all bench-compile-tests bench-build-runner bench-run bench-summary
+
+bench-build-runner: ## Build the run_program RTL runner in release mode
+	@echo "→ Building run_program runner..."
+	@cargo build --release --manifest-path $(VALIDATOR_DIR)/Cargo.toml --bin run_program
+	@echo "✓ Runner built: $(BENCH_RUNNER)"
+
+bench-compile-tests: ## Compile every C test program in tests/baremetal/programs/
+	@echo "→ Compiling all baremetal C test programs..."
+	@ok=0; fail=0; \
+	for src in $(BENCH_SRCS); do \
+		name=$$(basename $$src); \
+		printf "  %-40s" "$$name"; \
+		if $(MAKE) --no-print-directory compile-c PROG="$$src" > /dev/null 2>&1; then \
+			printf " ✓\n"; ok=$$((ok+1)); \
+		else \
+			printf " ✗\n"; fail=$$((fail+1)); \
+		fi; \
+	done; \
+	echo "→ Compiled: $$ok ok, $$fail failed"
+
+bench-run: ## Run all compiled .bin files through the RTL runner and write $(BENCH_REPORT)
+	@if [ ! -x "$(BENCH_RUNNER)" ]; then \
+		echo "ERROR: runner not built — run: make bench-build-runner"; exit 1; \
+	fi
+	@echo "→ Running benchmarks..."
+	@n=0; total=$$(ls $(BENCH_PROGRAMS_DIR)/*.bin 2>/dev/null | wc -l | tr -d ' '); \
+	printf '[\n' > $(BENCH_REPORT); \
+	first=1; \
+	for bin in $(BENCH_PROGRAMS_DIR)/*.bin; do \
+		test -f "$$bin" || continue; \
+		n=$$((n+1)); \
+		name=$$(basename "$$bin"); \
+		printf "  [%2d/%2d] %-44s" $$n $$total "$$name"; \
+		if [ "$$first" = "0" ]; then printf ',\n' >> $(BENCH_REPORT); fi; \
+		if "$(BENCH_RUNNER)" --binary "$$bin" --json >> $(BENCH_REPORT) 2>/dev/null; then \
+			printf " ✓\n"; \
+		else \
+			printf " ✗ (runner error)\n"; \
+		fi; \
+		first=0; \
+	done; \
+	printf '\n]\n' >> $(BENCH_REPORT)
+	@echo "✓ Results written to $(BENCH_REPORT)"
+
+bench-all: librust bench-build-runner bench-compile-tests bench-run ## Full benchmark pipeline: compile + run + report
+	@echo ""
+	@echo "=== Benchmark complete ==="
+	@echo "  Report : $(BENCH_REPORT)"
+	@echo "  Programs: $$(grep -c '\"program\"' $(BENCH_REPORT) 2>/dev/null || echo 0)"
+	@echo "  Run: make bench-summary  to view results table"
+
+bench-summary: ## Print a human-readable summary table from the last bench-all run
+	@python3 tools/bench_summary.py $(BENCH_REPORT)
+
+# ======================
+# Pulsar PAC (Rust Peripheral Access Crate)
+#
+# The PAC exposes the six LX32K custom instructions as safe Rust functions.
+# Compiling for the bare-metal target requires the LX32 LLVM backend
+# (make setup-backend).  Use `check-pac` for host-side type-checking without
+# needing the custom target installed.
+# ======================
+
+# ======================
+# Pulsar PAC + Rust Firmware
+#
+# The PAC exposes all six LX32K custom instructions as safe Rust functions.
+# The `rt` feature replaces crt0.S with a Rust _start entry point, making
+# Rust a first-class firmware citizen alongside C.
+#
+# Toolchain requirements (make setup-backend builds these):
+#   $(LX32_LLVM_BIN)/ld.lld   — linker
+#   $(LX32_LLVM_BIN)/llvm-objcopy — ELF → flat binary
+#   $(LX32_LLVM_BIN)/llvm-size    — binary size report
+#
+# Use `make check-pac` for host-side type-checking without the LX32 toolchain.
+# ======================
+
+PAC_DIR      := $(CURDIR)/tools/pulsar_pac
+FIRMWARE_OUT := $(PAC_DIR)/target/lx32-unknown-none-elf/release/examples
+
+# Pass the LX32 linker through RUSTFLAGS so cargo finds it.
+PAC_RUSTFLAGS := \
+  -C linker=$(LX32_LLVM_BIN)/ld.lld \
+  -C link-arg=-T$(BACKEND_SRC)/tests/baremetal/link.ld \
+  -C link-arg=--gc-sections
+
+.PHONY: build-pac check-pac build-firmware size-firmware
+
+check-pac: ## Type-check pulsar-pac on the host (no LX32 toolchain needed)
+	@echo "→ Checking pulsar-pac (host)..."
+	@cargo check --manifest-path $(PAC_DIR)/Cargo.toml
+	@echo "✓ pulsar-pac OK"
+
+build-pac: ## Build pulsar-pac library for lx32-unknown-none-elf
+	@echo "→ Building pulsar-pac..."
+	@RUSTFLAGS="$(PAC_RUSTFLAGS)" cargo build --release \
+		--manifest-path $(PAC_DIR)/Cargo.toml \
+		--target $(CURDIR)/tools/lx32-unknown-none-elf.json
+	@echo "✓ pulsar-pac built"
+
+build-firmware: ## Build all Rust firmware examples → .elf + .bin
+	@echo "→ Building Rust firmware (--features rt)..."
+	@RUSTFLAGS="$(PAC_RUSTFLAGS)" cargo build --release \
+		--manifest-path $(PAC_DIR)/Cargo.toml \
+		--target $(CURDIR)/tools/lx32-unknown-none-elf.json \
+		--features rt \
+		--examples
+	@echo "→ Generating flat binaries..."
+	@for elf in $(FIRMWARE_OUT)/*.elf 2>/dev/null; do \
+		test -f "$$elf" || continue; \
+		bin="$${elf%.elf}.bin"; \
+		$(LX32_LLVM_BIN)/llvm-objcopy -O binary "$$elf" "$$bin"; \
+		printf "  %-40s %s bytes\n" "$$(basename $$bin)" \
+			"$$(wc -c < $$bin)"; \
+	done
+	@echo "✓ Rust firmware built"
+
+size-firmware: build-firmware ## Print section sizes for all Rust firmware examples
+	@echo "→ Section sizes:"
+	@for elf in $(FIRMWARE_OUT)/*.elf 2>/dev/null; do \
+		test -f "$$elf" || continue; \
+		echo "  $$(basename $$elf):"; \
+		$(LX32_LLVM_BIN)/llvm-size "$$elf"; \
+	done
 
 
 

@@ -24,6 +24,7 @@ PULSAR takes a different approach:
 - Read everything in parallel  
 - Eliminate debounce at the source  
 - Remove unnecessary waiting between input and output  
+
 ---
 
 ## What makes it different

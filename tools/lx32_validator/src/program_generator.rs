@@ -36,6 +36,7 @@ pub struct ProgramConfig {
     pub enable_alu: bool,
     pub enable_jumps: bool,
     pub enable_upper_imm: bool,
+    pub enable_custom: bool,
 }
 
 impl Default for ProgramConfig {
@@ -48,6 +49,7 @@ impl Default for ProgramConfig {
             enable_alu: true,
             enable_jumps: true,
             enable_upper_imm: true,
+            enable_custom: false,
         }
     }
 }
@@ -98,6 +100,9 @@ impl Program {
         if config.enable_upper_imm {
             categories.push("UIMM");
         }
+        if config.enable_custom {
+            categories.push("CUSTOM");
+        }
 
         if categories.is_empty() {
             categories.push("ALU"); // fallback
@@ -112,6 +117,7 @@ impl Program {
             "BRANCH" => Self::generate_branch_instruction(rng),
             "JUMP" => Self::generate_jump_instruction(rng),
             "UIMM" => Self::generate_upper_imm_instruction(rng),
+            "CUSTOM" => Self::generate_custom_instruction(rng),
             _ => Self::generate_alu_instruction(rng),
         }
     }
@@ -281,6 +287,76 @@ impl Program {
             rs1: Some(rs1),
             rs2: Some(rs2),
             imm: Some(offset),
+        }
+    }
+
+    /// Generate a PULSAR custom instruction (LX.SENSOR/MATRIX/DELTA/CHORD/WAIT/REPORT).
+    ///
+    /// CUSTOM-0 (opcode 0x0B): LX.SENSOR (funct3=000), LX.MATRIX (001), LX.DELTA (010), LX.CHORD (011)
+    ///   Encoding: imm12=0 | rs1 | funct3 | rd | 0x0B
+    /// CUSTOM-1 (opcode 0x2B): LX.WAIT (funct3=000), LX.REPORT (001)
+    ///   Encoding: imm12=0 | rs1 | funct3 | rd=0 | 0x2B
+    fn generate_custom_instruction(rng: &mut impl RngExt) -> Instruction {
+        // Pick one of 6 PULSAR instructions uniformly.
+        match rng.random_range(0u8..6) {
+            0 => {
+                // LX.SENSOR rd, rs1  — read sensor channel rs1 into rd
+                let rd  = rng.random_range(1u8..32);
+                let rs1 = rng.random_range(0u8..32);
+                Instruction {
+                    encoding: ((rs1 as u32) << 15) | (0x0 << 12) | ((rd as u32) << 7) | 0x0B,
+                    mnemonic: format!("LX.SENSOR x{}, x{}", rd, rs1),
+                    rd: Some(rd), rs1: Some(rs1), rs2: None, imm: None,
+                }
+            }
+            1 => {
+                // LX.MATRIX rd, rs1  — read matrix slot rs1 into rd
+                let rd  = rng.random_range(1u8..32);
+                let rs1 = rng.random_range(0u8..32);
+                Instruction {
+                    encoding: ((rs1 as u32) << 15) | (0x1 << 12) | ((rd as u32) << 7) | 0x0B,
+                    mnemonic: format!("LX.MATRIX x{}, x{}", rd, rs1),
+                    rd: Some(rd), rs1: Some(rs1), rs2: None, imm: None,
+                }
+            }
+            2 => {
+                // LX.DELTA rd, rs1  — read delta channel rs1 into rd
+                let rd  = rng.random_range(1u8..32);
+                let rs1 = rng.random_range(0u8..32);
+                Instruction {
+                    encoding: ((rs1 as u32) << 15) | (0x2 << 12) | ((rd as u32) << 7) | 0x0B,
+                    mnemonic: format!("LX.DELTA x{}, x{}", rd, rs1),
+                    rd: Some(rd), rs1: Some(rs1), rs2: None, imm: None,
+                }
+            }
+            3 => {
+                // LX.CHORD rd, rs1  — read chord bitmask rs1 into rd
+                let rd  = rng.random_range(1u8..32);
+                let rs1 = rng.random_range(0u8..32);
+                Instruction {
+                    encoding: ((rs1 as u32) << 15) | (0x3 << 12) | ((rd as u32) << 7) | 0x0B,
+                    mnemonic: format!("LX.CHORD x{}, x{}", rd, rs1),
+                    rd: Some(rd), rs1: Some(rs1), rs2: None, imm: None,
+                }
+            }
+            4 => {
+                // LX.WAIT rs1  — stall for rs1 cycles (rd=x0, no result)
+                let rs1 = rng.random_range(0u8..32);
+                Instruction {
+                    encoding: ((rs1 as u32) << 15) | (0x0 << 12) | 0x2B,
+                    mnemonic: format!("LX.WAIT x{}", rs1),
+                    rd: None, rs1: Some(rs1), rs2: None, imm: None,
+                }
+            }
+            _ => {
+                // LX.REPORT rs1  — DMA report-buffer flush from address in rs1 (rd=x0)
+                let rs1 = rng.random_range(0u8..32);
+                Instruction {
+                    encoding: ((rs1 as u32) << 15) | (0x1 << 12) | 0x2B,
+                    mnemonic: format!("LX.REPORT x{}", rs1),
+                    rd: None, rs1: Some(rs1), rs2: None, imm: None,
+                }
+            }
         }
     }
 

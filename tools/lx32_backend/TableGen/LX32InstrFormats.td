@@ -78,6 +78,9 @@ class LX32Opcode<string name, bits<7> val> {
   bits<7> Val  = val;
 }
 
+def OPC_CUSTOM_0 : LX32Opcode<"CUSTOM-0", 0b0001011>;
+def OPC_CUSTOM_1 : LX32Opcode<"CUSTOM-1", 0b0101011>;
+
 //===----------------------------------------------------------------------===//
 // Instruction base classes
 //===----------------------------------------------------------------------===//

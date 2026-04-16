@@ -18,8 +18,11 @@
 #include "llvm/MC/MCStreamer.h"
 #include "llvm/MC/MCSubtargetInfo.h"
 #include "llvm/MC/TargetRegistry.h"
+#include "llvm/Support/Debug.h"
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/raw_ostream.h"
+
+#define DEBUG_TYPE "lx32-asmprinter"
 
 using namespace llvm;
 
@@ -123,10 +126,24 @@ public:
   StringRef getPassName() const override { return "LX32 Assembly Printer"; }
 
   void emitInstruction(const MachineInstr *MI) override {
+    LLVM_DEBUG({
+      dbgs() << "lx32-asmprinter: emitting opc=" << MI->getOpcode();
+      if (MI->getNumOperands() > 0) {
+        dbgs() << " (";
+        for (unsigned I = 0, E = MI->getNumOperands(); I != E; ++I) {
+          if (I) dbgs() << ", ";
+          MI->getOperand(I).print(dbgs());
+        }
+        dbgs() << ")";
+      }
+      dbgs() << "\n";
+    });
+
     switch (MI->getOpcode()) {
     default:
       break;
     case LX32::PseudoRET: {
+      LLVM_DEBUG(dbgs() << "lx32-asmprinter: PseudoRET → JALR x0, ra, 0\n");
       MCInst Ret;
       Ret.setOpcode(LX32::JALR);
       Ret.addOperand(MCOperand::createReg(LX32::X0));
@@ -136,6 +153,7 @@ public:
       return;
     }
     case LX32::PseudoNOP: {
+      LLVM_DEBUG(dbgs() << "lx32-asmprinter: PseudoNOP → ADDI x0, x0, 0\n");
       MCInst Nop;
       Nop.setOpcode(LX32::ADDI);
       Nop.addOperand(MCOperand::createReg(LX32::X0));
@@ -188,8 +206,63 @@ public:
       report_fatal_error(Twine("lx32: malformed PseudoCALL (missing callable target operand): ") +
                          OS.str());
     }
+    case LX32::PseudoBEQ:
+    case LX32::PseudoBNE:
+    case LX32::PseudoBLT:
+    case LX32::PseudoBGE:
+    case LX32::PseudoBLTU:
+    case LX32::PseudoBGEU: {
+      // Map each pseudo conditional branch to its real B-type instruction.
+      // Operand layout (PseudoCondBr): 0=rs1, 1=rs2, 2=target (MBB).
+      static const unsigned RealOpc[] = {
+          LX32::BEQ, LX32::BNE, LX32::BLT,
+          LX32::BGE, LX32::BLTU, LX32::BGEU,
+      };
+      static const unsigned PseudoOpc[] = {
+          LX32::PseudoBEQ, LX32::PseudoBNE, LX32::PseudoBLT,
+          LX32::PseudoBGE, LX32::PseudoBLTU, LX32::PseudoBGEU,
+      };
+      unsigned RealOpcode = LX32::BEQ;
+      for (unsigned i = 0; i < 6; ++i) {
+        if (MI->getOpcode() == PseudoOpc[i]) {
+          RealOpcode = RealOpc[i];
+          break;
+        }
+      }
+      MCOperand RS1, RS2, Target;
+      MCILower.lowerOperand(MI->getOperand(0), RS1);
+      MCILower.lowerOperand(MI->getOperand(1), RS2);
+      MCILower.lowerOperand(MI->getOperand(2), Target);
+      MCInst Branch;
+      Branch.setOpcode(RealOpcode);
+      Branch.addOperand(RS1);
+      Branch.addOperand(RS2);
+      Branch.addOperand(Target);
+      EmitToStreamer(*OutStreamer, Branch);
+      return;
+    }
     case LX32::PseudoLA: {
-      // Minimal symbol materialization for asm path.
+      // Materialise a 32-bit absolute symbol address using two instructions:
+      //
+      //   AUIPC rd, %pcrel_hi(sym)    — rd  = PC + upper(sym - PC)
+      //   ADDI  rd, rd, %pcrel_lo(.) — rd += lower(sym - PC)
+      //
+      // Both instructions reference the same symbol expression.  The ELF
+      // relocations R_RISCV_PCREL_HI20 (on AUIPC) and R_RISCV_PCREL_LO12_I
+      // (on ADDI) instruct the linker to patch each immediate with the
+      // appropriate portion of the PC-relative offset.
+      //
+      // NOTE: for the LX32 baremetal target the runtime load address is fixed
+      // by the linker script, so PC-relative and absolute addressing produce
+      // identical final values.  A future PIC variant would use the same
+      // AUIPC+ADDI sequence with dynamic-linking relocations.
+      //
+      // TODO: introduce LX32MCExpr with VK_PCREL_HI / VK_PCREL_LO variants
+      // so that the object-file emitter applies the correct ELF relocation
+      // types rather than emitting the raw symbol reference.  The current
+      // implementation is correct for the assembly-text (.s) pipeline because
+      // the integrated assembler resolves the symbols; it is NOT correct for
+      // direct object-code emission when PseudoLA is used for globals.
       MCOperand RD, SymOp;
       if (!MCILower.lowerOperand(MI->getOperand(0), RD) ||
           !MCILower.lowerOperand(MI->getOperand(1), SymOp))
@@ -198,14 +271,14 @@ public:
       MCInst Auipc;
       Auipc.setOpcode(LX32::AUIPC);
       Auipc.addOperand(RD);
-      Auipc.addOperand(SymOp);
+      Auipc.addOperand(SymOp); // %pcrel_hi — linker resolves to upper 20 bits
       EmitToStreamer(*OutStreamer, Auipc);
 
       MCInst Addi;
       Addi.setOpcode(LX32::ADDI);
       Addi.addOperand(RD);
       Addi.addOperand(RD);
-      Addi.addOperand(SymOp);
+      Addi.addOperand(SymOp); // %pcrel_lo — linker resolves to lower 12 bits
       EmitToStreamer(*OutStreamer, Addi);
       return;
     }

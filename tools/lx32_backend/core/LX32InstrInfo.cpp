@@ -245,8 +245,10 @@ bool LX32InstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
       report_fatal_error("lx32: conditional branch pseudo missing target MBB");
 
     auto MIB = BuildMI(MBB, MI, DL, get(RealOpc));
-    MIB->addOperand(RegOps[RegOps.size() - 2]);
-    MIB->addOperand(RegOps[RegOps.size() - 1]);
+    // Standard RISC-V: rs1 is operand A (src_a), rs2 is operand B (src_b).
+    // BLT branches if rs1 < rs2. branch_unit.sv confirms this ordering.
+    MIB->addOperand(RegOps[0]);  // rs1
+    MIB->addOperand(RegOps[1]);  // rs2
     MIB.addMBB(TargetMBB);
     MBB.erase(MI);
     return true;
@@ -286,9 +288,18 @@ bool LX32InstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
     }
 
     if (CondTarget) {
+      // In a canonical cond-then-uncond block, the unconditional edge should
+      // be the layout fallthrough when no explicit MBB operand survives.
+      if (!TargetMBB)
+        if (MachineBasicBlock *LayoutNext = MBB.getNextNode())
+          if (LayoutNext != CondTarget && LayoutNext != &MBB)
+            TargetMBB = LayoutNext;
+
       MachineBasicBlock *OtherSucc = nullptr;
       for (MachineBasicBlock *Succ : MBB.successors()) {
         if (Succ == CondTarget)
+          continue;
+        if (Succ == &MBB)
           continue;
         if (!OtherSucc) {
           OtherSucc = Succ;
@@ -299,6 +310,12 @@ bool LX32InstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
       }
       if (OtherSucc)
         TargetMBB = OtherSucc;
+    }
+
+    if (!TargetMBB) {
+      if (MachineBasicBlock *LayoutNext = MBB.getNextNode())
+        if (LayoutNext != &MBB)
+          TargetMBB = LayoutNext;
     }
 
     if (!TargetMBB) {

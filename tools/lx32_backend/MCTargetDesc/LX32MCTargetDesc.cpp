@@ -77,66 +77,45 @@ public:
                   const MCRegisterInfo &MRI)
       : MCInstPrinter(MAI, MII, MRI) {}
 
-  // Print a full instruction. For now we fall back to the raw opcode number
-  // and operand list so that the pipeline produces _something_ instead of
-  // crashing. This will be replaced by the TableGen-generated AsmWriter once
-  // LX32AsmWriter.inc is available.
+  std::pair<const char *, uint64_t>
+  getMnemonic(const MCInst &MI) const override;
+
+  void printInstruction(const MCInst *MI, uint64_t Address,
+                        const MCSubtargetInfo &STI, raw_ostream &OS);
+
+  bool printAliasInstr(const MCInst *MI, uint64_t Address,
+                       const MCSubtargetInfo &STI, raw_ostream &OS);
+
+  static const char *getRegisterName(MCRegister Reg, unsigned AltIdx);
+
+  void printOperand(const MCInst *MI, unsigned OpNo,
+                    const MCSubtargetInfo &STI, raw_ostream &OS) {
+    const MCOperand &Op = MI->getOperand(OpNo);
+    if (Op.isReg()) {
+      OS << getRegisterName(Op.getReg(), LX32::NoRegAltName);
+      return;
+    }
+    if (Op.isImm()) {
+      OS << Op.getImm();
+      return;
+    }
+    if (Op.isExpr()) {
+      Op.print(OS); // MCOperand is a friend of MCExpr; routes through its print
+      return;
+    }
+    OS << "<unknown operand>";
+  }
+
   void printInst(const MCInst *MI, uint64_t Address, StringRef Annot,
                  const MCSubtargetInfo &STI, raw_ostream &OS) override {
-    // Try to get the instruction name from the generated table.
-    StringRef Name = MII.getName(MI->getOpcode());
-    if (!Name.empty())
-      OS << "\t" << Name;
-    else
-      OS << "\t<opcode:" << MI->getOpcode() << ">";
-
-    // Print operands separated by ", ".
-    for (unsigned i = 0, e = MI->getNumOperands(); i != e; ++i) {
-      OS << (i == 0 ? "\t" : ", ");
-      const MCOperand &Op = MI->getOperand(i);
-      if (Op.isReg())
-        // Use the ABI register name (alt name index 0 = ABIRegAltName).
-        OS << getRegisterName(Op.getReg());
-      else if (Op.isImm())
-        OS << Op.getImm();
-      else if (Op.isExpr())
-        // Some LLVM versions keep MCExpr::print() private and do not provide an
-        // operator<< overload. Until we hook up a real asm writer, print a
-        // stable placeholder instead of failing to compile.
-        OS << "<expr>";
-      else
-        OS << "<unknown operand>";
-    }
-
-    // Emit any inline annotation (e.g. branch target comment).
+    if (!printAliasInstr(MI, Address, STI, OS))
+      printInstruction(MI, Address, STI, OS);
     printAnnotation(OS, Annot);
   }
-
-  // Required: return the register name. We use ABIRegAltName (index 0)
-  // so that x10 prints as "a0", x1 as "ra", etc.
-  static const char *getRegisterName(MCRegister Reg) {
-    // IMPORTANT:
-    //   Returning nullptr here is UB for callers and has been observed to
-    //   trigger asserts/crashes when the MC layer tries to print instructions.
-    //
-    // Until we hook up the TableGen-generated AsmWriter (which provides proper
-    // ABI names like "sp", "ra", "a0", ...), we provide a tiny but safe
-    // fallback that prints registers as "x<N>".
-    // TableGen allocates registers starting from ID 1, so we subtract 1.
-    static thread_local char Buf[16];
-    unsigned R = static_cast<unsigned>(Reg.id());
-    if (R > 0) R -= 1;
-    (void)snprintf(Buf, sizeof(Buf), "x%u", R);
-    return Buf;
-  }
-
-  // Required pure virtual from MCInstPrinter — return the instruction mnemonic.
-  std::pair<const char *, uint64_t>
-  getMnemonic(const MCInst &MI) const override {
-    StringRef Name = MII.getName(MI.getOpcode());
-    return {Name.data(), 0};
-  }
 };
+
+#define PRINT_ALIAS_INSTR
+#include "LX32GenAsmWriter.inc"
 
 } // anonymous namespace
 

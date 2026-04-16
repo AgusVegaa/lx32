@@ -8,7 +8,7 @@ _start:
 
     lui     x2, 1
 
-    jal     x1, 16
+    jal     x1, main
 
     lui     x5, 0xFFFFF
     sw      x10, 4(x5)

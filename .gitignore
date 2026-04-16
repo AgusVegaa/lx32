@@ -34,3 +34,10 @@ tools/**/*.tv
 
 # Backend llvm
 .llvm/
+tools/lx32_backend/build/
+*.o
+*.bin
+*.elf
+*.s
+*.ll
+bench_results.json

@@ -53,7 +53,8 @@ public:
     const MCOperand &MO = MI.getOperand(OpNo);
     if (MO.isExpr()) {
       Fixups.push_back(MCFixup::create(0, MO.getExpr(),
-                                       (MCFixupKind)1));
+                                       (MCFixupKind)LX32Fixups::fixup_lx32_branch,
+                                       /*PCRel=*/true));
       return 0;
     }
     return getMachineOpValue(MI, MO, Fixups, STI);
@@ -65,7 +66,8 @@ public:
     const MCOperand &MO = MI.getOperand(OpNo);
     if (MO.isExpr()) {
       Fixups.push_back(MCFixup::create(0, MO.getExpr(),
-                                       (MCFixupKind)2));
+                                       (MCFixupKind)LX32Fixups::fixup_lx32_jump,
+                                       /*PCRel=*/true));
       return 0;
     }
     return getMachineOpValue(MI, MO, Fixups, STI);

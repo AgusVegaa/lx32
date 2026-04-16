@@ -18,6 +18,8 @@ module control_unit (
     output logic                              jump,
     output logic                              jalr,
     output logic                              src_a_pc,
+    output logic                              custom_0,
+    output logic                              custom_1,
     output lx32_branch_pkg::branch_op_e       branch_op,
 
     // ------------------------------------------------------------
@@ -69,6 +71,8 @@ module control_unit (
     jump        = 1'b0;
     jalr        = 1'b0;
     src_a_pc    = 1'b0;
+    custom_0    = 1'b0;
+    custom_1    = 1'b0;
     branch_op   = lx32_branch_pkg::BR_EQ;
     alu_op_main = ALU_MAIN_ADD;
 
@@ -164,6 +168,24 @@ module control_unit (
           3'b111:  branch_op = lx32_branch_pkg::BR_GEU;
           default: branch_op = lx32_branch_pkg::BR_EQ;
         endcase
+      end
+
+      // -------------------------
+      // Custom 0
+      // -------------------------
+      lx32_isa_pkg::OP_CUSTOM_0: begin
+        reg_write   = 1'b1; // SENSOR, MATRIX, DELTA, CHORD return a value
+        custom_0    = 1'b1;
+        alu_op_main = ALU_MAIN_ADD;
+      end
+
+      // -------------------------
+      // Custom 1
+      // -------------------------
+      lx32_isa_pkg::OP_CUSTOM_1: begin
+        reg_write   = 1'b0; // WAIT, REPORT do not mutate registers
+        custom_1    = 1'b1;
+        alu_op_main = ALU_MAIN_ADD;
       end
 
       // -------------------------

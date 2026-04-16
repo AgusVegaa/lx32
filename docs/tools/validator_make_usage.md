@@ -25,6 +25,55 @@ make sim TB=lx32_system_tb
 
 This will compile the RTL and testbench, then run the simulation.
 
+### A3 Custom ISA Directed Suite
+
+Use this exact sequence to validate the first custom ISA block end-to-end in RTL:
+
+```bash
+make sim TB=lx32_sensor_tb
+make sim TB=lx32_chord_tb
+make sim TB=lx32_wait_tb
+make sim TB=lx32_report_tb
+```
+
+For RTL-vs-golden parity on custom ops, run:
+
+```bash
+rm -rf .sim/lx32_lib
+mkdir -p .sim/lx32_lib
+verilator -Wall -Wno-fatal --cc --Mdir .sim/lx32_lib rtl/arch/*.sv rtl/core/*.sv --top-module lx32_system
+cargo test --manifest-path tools/lx32_validator/Cargo.toml --test test_custom_ops -- --nocapture
+```
+
+Coverage details are tracked in `docs/lx32k/a3_custom_coverage.md`.
+
+### A5 MMIO Decode Directed Test
+
+Use this test to validate MMIO range decode and external memory write gating:
+
+```bash
+make sim TB=lx32_mmio_decode_tb
+```
+
+Coverage details are tracked in `docs/lx32k/a5_mmio_decode_coverage.md`.
+
+### A4 Backend Custom ISA Lowering Check
+
+Use this command to verify custom builtin lowering to LX32 custom mnemonics:
+
+```bash
+bash tools/lx32_backend/tests/check_custom_intrinsics.sh
+```
+
+If backend tools are not yet available (`llc not found`), run:
+
+```bash
+make build-backend
+bash tools/lx32_backend/tests/check_custom_intrinsics.sh
+```
+
+Coverage details are tracked in `docs/lx32k/a4_backend_custom_isa_validation.md`.
+
 To enable VCD generation in testbenches that support it:
 
 ```bash

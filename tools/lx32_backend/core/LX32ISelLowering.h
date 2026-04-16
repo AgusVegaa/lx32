@@ -34,7 +34,7 @@
 //        Expand  — decompose into simpler nodes (e.g., sdiv → __divsi3 call).
 //        Custom  — call LowerOperation to produce a hand-written DAG sequence.
 //
-//   3. DAG → MachineInstr selection  (LX32ISelDAGToDAG, Day 10)
+//   3. DAG → MachineInstr selection  (LX32ISelDAGToDAG)
 //      Pattern-matches the legalised DAG against the patterns declared in
 //      LX32InstrInfo.td and emits concrete MachineInstrs.
 //
@@ -114,6 +114,38 @@ enum NodeType : unsigned {
   // Produced by lowerBR_CC from ISD::BR_CC to keep branch condition handling
   // target-specific and selected directly to PseudoB* opcodes.
   BRCC,
+
+  // PULSAR custom instructions — "read" group.
+  //
+  // These nodes produce a value and carry no chain side-effect.  They are
+  // modelled as INTRINSIC_WO_CHAIN in the IR and lowered here so that the
+  // DAGToDAG selector sees a clean custom opcode.
+  //
+  // Node signature:  (rs1 : i32) → (rd : i32)
+  // Hardware:        1-cycle latency, never stall, sensor controller backed.
+  //
+  //   LX32_SENSOR  → lx.sensor  — 16-bit Hall-effect value at sensor[idx]
+  //   LX32_MATRIX  → lx.matrix  — pointer to 64-key snapshot buffer
+  //   LX32_DELTA   → lx.delta   — frame-to-frame velocity at key[idx]
+  //   LX32_CHORD   → lx.chord   — bitmask chord match (1 if active)
+  LX32_SENSOR,
+  LX32_MATRIX,
+  LX32_DELTA,
+  LX32_CHORD,
+
+  // PULSAR custom instructions — "chain" group.
+  //
+  // These nodes are side-effecting and carry an explicit chain to enforce
+  // ordering relative to other memory/IO operations.  They are modelled as
+  // INTRINSIC_VOID / INTRINSIC_W_CHAIN in the IR.
+  //
+  // Node signature:  (chain : Other, rs1 : i32) → (chain : Other)
+  // Hardware:        pipeline-stalling when DMA or cycle counter is active.
+  //
+  //   LX32_WAIT   → lx.wait   — stall pipeline for rs1 cycles
+  //   LX32_REPORT → lx.report — DMA 8-byte HID report to USB endpoint
+  LX32_WAIT,
+  LX32_REPORT,
 };
 } // namespace LX32ISD
 
@@ -138,7 +170,6 @@ public:
   //   - No SELECT instruction: SELECT → Custom (→ branch sequence)
   //   - No flags register: SETCC variants → Custom (→ SLT/SLTU/SUB combos)
   //   - Global addresses: GlobalAddress → Custom (→ AUIPC + ADDI)
-  //   - Variadic calls: VASTART → Custom (→ spill of argument registers)
   explicit LX32TargetLowering(const TargetMachine &TM,
                               const LX32Subtarget &STI);
 
@@ -239,20 +270,6 @@ private:
   // sequences to arithmetic idioms (e.g., select(a < b, a, b) → MIN via SLT).
   SDValue lowerSELECT(SDValue Op, SelectionDAG &DAG) const;
 
-  // lowerSETCC — lower ISD::SETCC to SLT/SLTU/XOR/ADD combinations.
-  //
-  // LX32 has no condition-flag register.  Comparison results live in GPRs.
-  // The available comparison instructions are SLT (signed) and SLTU (unsigned).
-  // All other condition codes are synthesised:
-  //
-  //   SETEQ  a, b  → (a XOR b) == 0  → XORI (a XOR b), 1    using SLTIU
-  //   SETNE  a, b  → (a XOR b) != 0  → SLTU x0, (a XOR b)
-  //   SETLE  a, b  → NOT (b < a)     → XORI (SLT b, a), 1
-  //   SETGE  a, b  → NOT (a < b)     → XORI (SLT a, b), 1
-  //   SETGT  a, b  → b < a           → SLT b, a
-  //   ... (unsigned variants use SLTU instead of SLT)
-  SDValue lowerSETCC(SDValue Op, SelectionDAG &DAG) const;
-
   // lowerBR_CC — lower ISD::BR_CC to LX32ISD::BRCC.
   //
   // Canonicalizes swapped predicates (e.g. GT -> LT with swapped operands)
@@ -263,13 +280,7 @@ private:
   // a BR_CC form handled by lowerBR_CC.
   SDValue lowerBRCOND(SDValue Op, SelectionDAG &DAG) const;
 
-  // lowerVASTART — lower ISD::VASTART for variadic function support.
-  //
-  // At the start of a variadic function, the register arguments that were not
-  // consumed by named parameters are spilled to a contiguous area of the
-  // frame.  lowerVASTART emits a store of the address of that area into the
-  // va_list structure, so that va_arg can walk it.
-  SDValue lowerVASTART(SDValue Op, SelectionDAG &DAG) const;
+  SDValue lowerINTRINSIC(SDValue Op, SelectionDAG &DAG) const;
 };
 
 } // namespace llvm

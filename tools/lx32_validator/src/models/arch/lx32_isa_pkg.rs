@@ -40,6 +40,12 @@ pub enum opcode_t {
     OP_OP = 0b0110011,     // R-type ALU
 
     // -------------------------
+    // PULSAR Custom ISA
+    // -------------------------
+    OP_CUSTOM_0 = 0b0001011,
+    OP_CUSTOM_1 = 0b0101011,
+
+    // -------------------------
     // Reserved / Fallback
     // -------------------------
     OP_INVALID = 0b0000000,
@@ -56,6 +62,8 @@ impl opcode_t {
             0b0100011 => Self::OP_STORE,
             0b0010011 => Self::OP_OP_IMM,
             0b0110011 => Self::OP_OP,
+            0b0001011 => Self::OP_CUSTOM_0,
+            0b0101011 => Self::OP_CUSTOM_1,
             _ => Self::OP_INVALID,
         }
     }

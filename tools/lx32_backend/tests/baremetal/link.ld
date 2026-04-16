@@ -13,8 +13,9 @@ SECTIONS {
     } > ram
 
     /*
-     * crt0 uses "jal x1, 16" (PC=0x4 -> target=0x14), so
-     * user text must start exactly at 0x14.
+     * crt0 occupies 5 instructions (0x00–0x13).  Place user .text
+     * immediately after so the first instruction of main is reachable
+     * by the R_RISCV_JAL relocation emitted for "jal ra, main".
      */
     .text ORIGIN(ram) + 0x14 : {
         *(.text .text.*)

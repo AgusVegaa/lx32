@@ -27,6 +27,8 @@ pub struct ControlSignals {
     pub jump: bool,
     pub jalr: bool,
     pub src_a_pc: bool,
+    pub custom_0: bool,
+    pub custom_1: bool,
     pub branch_op: branch_op_e,
     pub alu_control: alu_op_e,
 }
@@ -112,6 +114,18 @@ pub fn control_unit_golden(opcode: opcode_t, funct3: u8, funct7_5: bool) -> Cont
             sigs.jump = true;
             sigs.jalr = true;
             sigs.alu_src = true;
+        }
+        // Custom 0
+        opcode_t::OP_CUSTOM_0 => {
+            sigs.reg_write = true; // SENSOR, MATRIX, DELTA, CHORD return a value
+            sigs.custom_0 = true;
+            alu_op_main = AluMain::Add;
+        }
+        // Custom 1
+        opcode_t::OP_CUSTOM_1 => {
+            sigs.reg_write = false; // WAIT, REPORT do not mutate registers
+            sigs.custom_1 = true;
+            alu_op_main = AluMain::Add;
         }
         // Default: No-op or Invalid
         _ => {}
