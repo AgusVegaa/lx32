@@ -1,0 +1,19 @@
+# Cargo build configuration for lx32-unknown-none-elf firmware.
+#
+# No default target is set here — specify it on the command line:
+#   cargo build --release --target ../lx32-unknown-none-elf.json --features rt
+#
+# Or use the Makefile targets:
+#   make build-firmware   — cross-compile for LX32
+#   make check-pac        — type-check on the host (no LX32 toolchain needed)
+
+[target.'cfg(target_arch = "lx32")']
+linker = "ld.lld"
+rustflags = [
+    # Firmware linker script (relative to this directory at build time).
+    "-C", "link-arg=-T../lx32_backend/tests/baremetal/link.ld",
+    # Dead-code elimination across all sections.
+    "-C", "link-arg=--gc-sections",
+    # Catch missing symbols at link time, not at runtime.
+    "-C", "link-arg=--error-unresolved-symbols",
+]

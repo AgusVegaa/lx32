@@ -90,6 +90,30 @@ private:
   // ISD::TargetFrameIndex so that eliminateFrameIndex can resolve it later.
   bool selectAddrFI(SDValue Addr, SDValue &Base);
 
+  // materializeRegOperand — ensure a custom-instruction argument is in a GPR.
+  //
+  // Custom instructions accept only register operands.  When the caller passes
+  // a compile-time constant (e.g. lx_sensor(3), lx_wait(5000)) the constant
+  // must be materialized into a register first.  Three cases:
+  //
+  //   0            → alias x0 (no instruction)
+  //   fits simm12  → ADDI rd, x0, imm  (1 instruction)
+  //   large        → LUI rd, hi20; ADDI rd, rd, lo12  (1–2 instructions)
+  //                  The ADDI is suppressed when lo12 == 0.
+  SDValue materializeRegOperand(SDValue Op, const SDLoc &DL);
+
+  // selectLXReadOp — emit a value-producing custom instruction.
+  //
+  // Handles SENSOR / MATRIX / DELTA / CHORD.
+  // Expected node: (rs1 : i32) → (rd : i32)
+  void selectLXReadOp(SDNode *Node, unsigned MachOpc);
+
+  // selectLXChainOp — emit a side-effecting custom instruction.
+  //
+  // Handles WAIT / REPORT.
+  // Expected node: (chain : Other, rs1 : i32) → (chain : Other)
+  void selectLXChainOp(SDNode *Node, unsigned MachOpc);
+
   // Include the auto-generated selection matcher.
   #include "LX32GenDAGISel.inc"
 };
@@ -162,6 +186,62 @@ bool LX32DAGToDAGISel::selectAddrFI(SDValue Addr, SDValue &Base) {
     return true;
   }
   return false;
+}
+
+void LX32DAGToDAGISel::selectLXChainOp(SDNode *Node, unsigned MachOpc) {
+  if (Node->getNumOperands() < 2)
+    report_fatal_error("lx32: malformed LX custom chain node (missing chain or rs1)");
+  SDLoc DL(Node);
+  SDValue Chain = Node->getOperand(0);
+  SDValue RS1   = materializeRegOperand(Node->getOperand(1), DL);
+  LLVM_DEBUG(dbgs() << "lx32-isel: selecting LX chain op → machine opc "
+                    << MachOpc << "\n");
+  SDNode *N = CurDAG->getMachineNode(MachOpc, DL, MVT::Other, RS1, Chain);
+  ReplaceNode(Node, N);
+}
+
+SDValue LX32DAGToDAGISel::materializeRegOperand(SDValue Op, const SDLoc &DL) {
+  const auto *C = dyn_cast<ConstantSDNode>(Op);
+  if (!C)
+    return Op; // already a register value
+
+  int64_t V = C->getSExtValue();
+  LLVM_DEBUG(dbgs() << "lx32-isel: materializing constant " << V
+                    << " for custom instruction operand\n");
+
+  if (V == 0)
+    return CurDAG->getRegister(LX32::X0, MVT::i32);
+
+  if (isInt<12>(V)) {
+    SDValue X0  = CurDAG->getRegister(LX32::X0, MVT::i32);
+    SDValue Imm = CurDAG->getTargetConstant(V, DL, MVT::i32);
+    SDNode *Mat = CurDAG->getMachineNode(LX32::ADDI, DL, MVT::i32, X0, Imm);
+    return SDValue(Mat, 0);
+  }
+
+  // Large constant: LUI + optional ADDI.
+  // The +0x800 bias compensates for ADDI's sign-extension of its 12-bit field.
+  int64_t Hi20 = ((V + 0x800) >> 12) & 0xFFFFF;
+  int64_t Lo12 = V - (Hi20 << 12);
+  SDNode *LUI = CurDAG->getMachineNode(
+      LX32::LUI, DL, MVT::i32, CurDAG->getTargetConstant(Hi20, DL, MVT::i32));
+  if (Lo12 == 0)
+    return SDValue(LUI, 0);
+  SDNode *ADDI = CurDAG->getMachineNode(
+      LX32::ADDI, DL, MVT::i32, SDValue(LUI, 0),
+      CurDAG->getTargetConstant(Lo12, DL, MVT::i32));
+  return SDValue(ADDI, 0);
+}
+
+void LX32DAGToDAGISel::selectLXReadOp(SDNode *Node, unsigned MachOpc) {
+  if (Node->getNumOperands() < 1)
+    report_fatal_error("lx32: malformed LX custom read node (missing rs1)");
+  SDLoc DL(Node);
+  SDValue RS1 = materializeRegOperand(Node->getOperand(0), DL);
+  LLVM_DEBUG(dbgs() << "lx32-isel: selecting LX read op → machine opc "
+                    << MachOpc << "\n");
+  SDNode *N = CurDAG->getMachineNode(MachOpc, DL, Node->getValueType(0), RS1);
+  ReplaceNode(Node, N);
 }
 
 void LX32DAGToDAGISel::selectLXChainOp(SDNode *Node, unsigned MachOpc) {
