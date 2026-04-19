@@ -35,9 +35,15 @@ tools/**/*.tv
 # Backend llvm
 .llvm/
 tools/lx32_backend/build/
+
+# Rust toolchain fork (rebuilt locally, never checked in)
+.rust/
 *.o
 *.bin
 *.elf
 *.s
 *.ll
 bench_results.json
+**/target/
+**/*.bak
+*.lock

@@ -1,6 +1,6 @@
 # PULSAR Firmware Development Guide
 
-Writing and running firmware for the LX32K keyboard processor — in C and Rust.
+Writing and running firmware for the LX32K keyboard processor in C.
 
 ---
 
@@ -10,10 +10,9 @@ Writing and running firmware for the LX32K keyboard processor — in C and Rust.
 2. [Memory model](#2-memory-model)
 3. [Custom ISA reference](#3-custom-isa-reference)
 4. [C firmware](#4-c-firmware)
-5. [Rust firmware](#5-rust-firmware)
-6. [Simulate and validate](#6-simulate-and-validate)
-7. [Benchmark a program](#7-benchmark-a-program)
-8. [Common patterns](#8-common-patterns)
+5. [Simulate and validate](#5-simulate-and-validate)
+6. [Benchmark a program](#6-benchmark-a-program)
+7. [Common patterns](#7-common-patterns)
 
 ---
 
@@ -23,11 +22,9 @@ Writing and running firmware for the LX32K keyboard processor — in C and Rust.
 
 | Tool | Purpose | How to get |
 |------|---------|------------|
-| LX32 LLVM fork | Compiler, assembler, linker for bare-metal C and Rust | `make setup-backend` |
+| LX32 LLVM fork | Compiler, assembler, linker for bare-metal C | `make setup-backend` |
 | `ld.lld` | Linker (included in LX32 LLVM) | — |
-| `rustup` + `rustc` nightly | Rust cross-compilation | `rustup install nightly` |
 | `verilator` | RTL simulation for `run-binary` | `brew install verilator` |
-| `cargo` | Rust build system | ships with rustup |
 
 ### One-time setup
 
@@ -51,7 +48,7 @@ same 4 KB RAM in the baremetal target.
 
 ```
 0x0000_0000  ┌─────────────────────────────┐
-             │  _start  (5 instructions)   │  crt0.S or Rust rt
+             │  _start  (5 instructions)   │  crt0.S
 0x0000_0014  ├─────────────────────────────┤
              │  .text  (user code)         │
              │  .rodata / .data / .bss     │
@@ -216,131 +213,9 @@ Set via `LX32_C_OLEVEL=1 make compile-c PROG=...`.
 
 ---
 
-## 5. Rust firmware
+## 5. Simulate and validate
 
-### The PAC crate — `pulsar-pac`
-
-Located at `tools/pulsar_pac/`. It exposes all six instructions as safe Rust
-through three modules:
-
-| Module | Functions | Notes |
-|--------|-----------|-------|
-| `pulsar::sensor` | `read`, `delta`, `chord`, `snapshot` | `snapshot()` returns `&'static [u16; 64]` |
-| `pulsar::timing` | `wait` | see N+1 semantics above |
-| `pulsar::dma`    | `report` | takes `&[u8; 8]` |
-| `pulsar::raw`    | `lx_sensor`, `lx_matrix`, … | `unsafe`, direct `asm!` |
-
-### The `rt` feature
-
-Enable `rt` to include a Rust `_start` entry point + `#[panic_handler]`.
-This replaces `crt0.S` entirely — do **not** link both together.
-
-```toml
-# your firmware Cargo.toml
-[dependencies]
-pulsar-pac = { path = "../../tools/pulsar_pac", features = ["rt"] }
-```
-
-### Minimal program skeleton
-
-```rust
-#![no_std]
-#![no_main]   // _start is provided by pulsar::runtime (the `rt` feature)
-
-use pulsar::{dma, sensor, timing};
-
-const DEBOUNCE_CYCLES: u32 = 2_499; // 2500 effective cycles @ 50 MHz = 50 µs
-const PRESS_THRESHOLD: i32 = 200;
-const HID_KEY_BASE: u8 = 0x04;      // USB HID 'A'
-
-#[no_mangle]
-pub extern "C" fn main() -> i32 {
-    loop {
-        let snapshot = sensor::snapshot();
-
-        let mut best: Option<(u32, i32)> = None;
-        for key in 0..64u32 {
-            let d = sensor::delta(key);
-            if d > PRESS_THRESHOLD {
-                if best.map_or(true, |(_, bd)| d > bd) {
-                    best = Some((key, d));
-                }
-            }
-        }
-
-        let Some((key, _)) = best else { continue };
-
-        if snapshot[key as usize] == 0 { continue }
-
-        timing::wait(DEBOUNCE_CYCLES);
-
-        if sensor::delta(key) <= 0 { continue }
-
-        let usage = HID_KEY_BASE.wrapping_add((key % 26) as u8);
-        let report: [u8; 8] = [0x01, 0x00, 0x00, usage, 0x00, 0x00, 0x00, 0x00];
-        dma::report(&report);
-    }
-}
-```
-
-### Type-check without the LX32 toolchain
-
-The PAC compiles cleanly on the host — useful for CI or dev machines that
-don't have the LX32 fork installed:
-
-```sh
-make check-pac
-# or directly:
-cargo check --manifest-path tools/pulsar_pac/Cargo.toml
-```
-
-### Build a firmware binary
-
-```sh
-make build-firmware
-```
-
-Produces `.elf` + `.bin` for every file in `tools/pulsar_pac/examples/` under
-`tools/pulsar_pac/target/lx32-unknown-none-elf/release/examples/`.
-
-To build manually (useful for custom example paths):
-
-```sh
-RUSTFLAGS="-C linker=<lx32-llvm>/ld.lld \
-           -C link-arg=-T tools/lx32_backend/tests/baremetal/link.ld \
-           -C link-arg=--gc-sections" \
-cargo build --release \
-  --manifest-path tools/pulsar_pac/Cargo.toml \
-  --target tools/lx32-unknown-none-elf.json \
-  --features rt \
-  --example keyboard
-```
-
-### Add your own firmware example
-
-1. Create `tools/pulsar_pac/examples/my_firmware.rs` (use the skeleton above).
-2. Register it in `tools/pulsar_pac/Cargo.toml`:
-   ```toml
-   [[example]]
-   name              = "my_firmware"
-   required-features = ["rt"]
-   ```
-3. Run `make build-firmware`. The new binary appears alongside the others.
-
-### Size report
-
-```sh
-make size-firmware
-```
-
-Prints section sizes for every example. A well-written scan loop should
-produce a `.text` section under 300 bytes.
-
----
-
-## 6. Simulate and validate
-
-Both C and Rust produce a flat `.bin` file that can be loaded into the RTL
+C firmware produces a flat `.bin` file that can be loaded into the RTL
 simulator directly.
 
 ### Run a binary
@@ -349,7 +224,7 @@ simulator directly.
 make run-binary BIN=path/to/my_firmware.bin
 ```
 
-Or the Rust runner directly (more options):
+Or the runner directly (more options):
 
 ```sh
 tools/lx32_validator/target/release/run_program \
@@ -360,7 +235,7 @@ The simulator:
 1. Loads the binary at address `0x0000_0000` in 64 KB of flat RAM.
 2. Resets the LX32 core (5 clock cycles with `rst=1`).
 3. Runs until it detects a store to `0xFFFF_F004` (the MMIO exit port written
-   by `crt0.S` / `_start` after `main` returns) or hits `--max-cycles`.
+   by `crt0.S` after `main` returns) or hits `--max-cycles`.
 
 ### Verbose trace (cycle-by-cycle)
 
@@ -419,7 +294,7 @@ PC and register state after every instruction.
 
 ---
 
-## 7. Benchmark a program
+## 6. Benchmark a program
 
 The benchmark pipeline compiles every C program in
 `tools/lx32_backend/tests/baremetal/programs/`, runs each on the simulator,
@@ -459,64 +334,46 @@ run at exactly IPC = 1.0 on this single-cycle processor.
 
 ---
 
-## 8. Common patterns
+## 7. Common patterns
 
 ### Debounce window
 
 ```c
-// C — 50 µs at 50 MHz
+// 50 µs at 50 MHz
 lx_wait(2499);  // effective = 2500 cycles
-
-// Rust
-timing::wait(2_499);
 ```
 
 ### Read and act on a single key
 
 ```c
-// C
 int32_t v = lx_delta(key_index);
 if (v > THRESHOLD) { /* pressed */ }
-
-// Rust
-if sensor::delta(key_index) > THRESHOLD { /* pressed */ }
 ```
 
 ### Read the full snapshot at once
 
 ```c
-// C — one instruction, pointer into hardware double-buffer
+// one instruction, pointer into hardware double-buffer
 uint16_t *snap = lx_matrix(0);
 uint16_t raw = snap[42];         // key 42
-
-// Rust
-let snap = sensor::snapshot();   // &'static [u16; 64]
-let raw  = snap[42];
 ```
 
 ### Chord detection
 
 ```c
-// C — keys 0, 2, 5 all pressed simultaneously?
+// keys 0, 2, 5 all pressed simultaneously?
 if (lx_chord(0b00100101)) { /* chord active */ }
-
-// Rust
-if sensor::chord(0b00100101) { /* chord active */ }
 ```
 
 ### Send a HID keyboard report
 
 ```c
-// C — one cycle, DMA handles the USB transfer in the background
+// one cycle, DMA handles the USB transfer in the background
 uint8_t report[8] = {0x01, 0x00, 0x00, hid_usage, 0x00, 0x00, 0x00, 0x00};
 lx_report(report);
-
-// Rust
-let report: [u8; 8] = [0x01, 0x00, 0x00, hid_usage, 0x00, 0x00, 0x00, 0x00];
-dma::report(&report);
 ```
 
-`lx.report` / `dma::report` returns in 1 cycle if the DMA engine is idle.
+`lx.report` returns in 1 cycle if the DMA engine is idle.
 If a previous transfer is still in flight the pipeline stalls until the
 engine is ready — no explicit polling required.
 
@@ -528,21 +385,6 @@ engine is ready — no explicit polling required.
 lx_wait(99);
 ```
 
-### Panic-safe firmware (Rust)
-
-`pulsar::runtime` registers a `#[panic_handler]` that spins forever. The
-USB connection stays alive and a debugger can attach. If you need a custom
-handler, disable the `rt` feature and provide your own:
-
-```rust
-#[cfg(target_arch = "lx32")]
-#[panic_handler]
-fn panic(_: &core::panic::PanicInfo) -> ! {
-    // optionally send a diagnostic HID report, then spin
-    loop { core::hint::spin_loop(); }
-}
-```
-
 ---
 
 ## Quick-reference card
@@ -550,8 +392,6 @@ fn panic(_: &core::panic::PanicInfo) -> ! {
 ```
 COMPILE C         make compile-c PROG=path/to/main.c
 RUN BINARY        make run-binary BIN=path/to/main.bin
-TYPE-CHECK RUST   make check-pac
-BUILD RUST        make build-firmware
 BENCHMARK         make bench-all && make bench-summary
 VALIDATE RTL      make validate
 CYCLE TRACE       run_program --binary bin --verbose

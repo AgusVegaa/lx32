@@ -74,14 +74,17 @@ def RetCC_LX32 : CallingConv<[
   // Widen sub-word integer types to i32.
   CCIfType<[i1, i8, i16], CCPromoteToType<i32>>,
 
-  // i32 return values: a0, then a1.
-  CCIfType<[i32], CCAssignToReg<[X10, X11]>>,
+  // i32 return values: a0–a3 (X10–X13), four slots for i128 split into 4×i32.
+  CCIfType<[i32], CCAssignToReg<[X10, X11, X12, X13]>>,
 
-  // i64 return value: low word in a0 (X10), high word in a1 (X11).
-  CCIfType<[i64], CCAssignToRegWithShadow<[X10], [X11]>>,
+  // i64 return values: two aligned register pairs for i128 split into 2×i64.
+  //   First  i64 → a0:a1 (X10, shadow X11)
+  //   Second i64 → a2:a3 (X12, shadow X13)
+  CCIfType<[i64], CCAssignToRegWithShadow<[X10, X12], [X11, X13]>>,
 
-  // Overflow to stack: 4-byte size, 4-byte alignment.
-  CCAssignToStack<4, 4>
+  // Overflow to stack: i32 at 4-byte, i64 at 8-byte alignment.
+  CCIfType<[i32], CCAssignToStack<4, 4>>,
+  CCIfType<[i64], CCAssignToStack<8, 8>>
 ]>;
 
 //===----------------------------------------------------------------------===//

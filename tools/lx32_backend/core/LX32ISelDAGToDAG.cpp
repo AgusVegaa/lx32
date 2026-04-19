@@ -59,8 +59,6 @@ public:
   void Select(SDNode *Node) override;
 
 private:
-  void SelectFrameIndex(SDNode *Node);
-
   // materializeRegOperand — ensure a custom-instruction argument is in a GPR.
   //
   // Custom instructions accept only register operands.  When the caller passes
@@ -85,6 +83,13 @@ private:
   // Expected node: (chain : Other, rs1 : i32) → (chain : Other)
   void selectLXChainOp(SDNode *Node, unsigned MachOpc);
 
+  // selectAddrFI — ComplexPattern callback for AddrFI (defined in LX32InstrInfo.td).
+  //
+  // Called by the TableGen-generated SelectCode when matching load/store patterns
+  // that use the AddrFI operand.  Converts an ISD::FrameIndex node to an
+  // ISD::TargetFrameIndex so that eliminateFrameIndex can resolve it later.
+  bool selectAddrFI(SDValue Addr, SDValue &Base);
+
   // Include the auto-generated selection matcher.
   #include "LX32GenDAGISel.inc"
 };
@@ -106,15 +111,6 @@ public:
 
 char LX32DAGToDAGISelLegacy::ID = 0;
 
-void LX32DAGToDAGISel::SelectFrameIndex(SDNode *Node) {
-  SDLoc DL(Node);
-  int FI = cast<FrameIndexSDNode>(Node)->getIndex();
-  SDValue TFI = CurDAG->getTargetFrameIndex(FI, MVT::i32);
-  SDValue Zero = CurDAG->getTargetConstant(0, DL, MVT::i32);
-
-  SDNode *Result = CurDAG->getMachineNode(LX32::ADDI, DL, MVT::i32, TFI, Zero);
-  ReplaceNode(Node, Result);
-}
 
 SDValue LX32DAGToDAGISel::materializeRegOperand(SDValue Op, const SDLoc &DL) {
   const auto *C = dyn_cast<ConstantSDNode>(Op);
@@ -158,6 +154,14 @@ void LX32DAGToDAGISel::selectLXReadOp(SDNode *Node, unsigned MachOpc) {
                     << MachOpc << "\n");
   SDNode *N = CurDAG->getMachineNode(MachOpc, DL, Node->getValueType(0), RS1);
   ReplaceNode(Node, N);
+}
+
+bool LX32DAGToDAGISel::selectAddrFI(SDValue Addr, SDValue &Base) {
+  if (auto *FIN = dyn_cast<FrameIndexSDNode>(Addr)) {
+    Base = CurDAG->getTargetFrameIndex(FIN->getIndex(), MVT::i32);
+    return true;
+  }
+  return false;
 }
 
 void LX32DAGToDAGISel::selectLXChainOp(SDNode *Node, unsigned MachOpc) {
@@ -230,23 +234,23 @@ void LX32DAGToDAGISel::Select(SDNode *Node) {
       report_fatal_error("lx32: malformed CALL node");
 
     SDValue Callee = Node->getOperand(1);
-    if (Callee.getOpcode() != ISD::TargetGlobalAddress &&
-        Callee.getOpcode() != ISD::TargetExternalSymbol)
-      report_fatal_error("lx32: CALL expects target global/external symbol");
+    bool IsDirect = (Callee.getOpcode() == ISD::TargetGlobalAddress ||
+                     Callee.getOpcode() == ISD::TargetExternalSymbol);
 
     SmallVector<SDValue, 4> Ops;
-    Ops.push_back(Callee);              // explicit call target symbol
+    Ops.push_back(Callee);              // call target (symbol or register)
     Ops.push_back(Node->getOperand(0)); // chain
     // Forward glue (if any); skip ISD::Register operands added by LowerCall
-    // since PseudoCALL's Uses list in TableGen already declares the arg regs.
+    // since PseudoCALL/PseudoINDIRECTCALL Uses lists declare the arg regs.
     for (unsigned I = 2, E = Node->getNumOperands(); I != E; ++I) {
       SDValue Op = Node->getOperand(I);
       if (Op.getValueType() == MVT::Glue)
         Ops.push_back(Op);
     }
 
+    unsigned CallOpc = IsDirect ? LX32::PseudoCALL : LX32::PseudoINDIRECTCALL;
     SDNode *Call = CurDAG->getMachineNode(
-        LX32::PseudoCALL, DL, CurDAG->getVTList(MVT::Other, MVT::Glue), Ops);
+        CallOpc, DL, CurDAG->getVTList(MVT::Other, MVT::Glue), Ops);
     ReplaceNode(Node, Call);
     return;
   }
@@ -317,11 +321,24 @@ void LX32DAGToDAGISel::Select(SDNode *Node) {
     ReplaceNode(Node, Br);
     return;
   }
+  case ISD::SELECT_CC: {
+    // ISD::SELECT_CC nodes can arrive here when the post-legalization
+    // DAGCombiner rebuilds them from ISD::SELECT(ISD::SETCC, ...) forms,
+    // bypassing the op-legalizer's Custom action.  Convert to
+    // LX32ISD::SELECT_CC and let the TableGen pattern select it.
+    SDLoc DL(Node);
+    ISD::CondCode CC = cast<CondCodeSDNode>(Node->getOperand(4))->get();
+    SDValue New = CurDAG->getNode(
+        LX32ISD::SELECT_CC, DL, Node->getValueType(0),
+        Node->getOperand(0), Node->getOperand(1),
+        Node->getOperand(2), Node->getOperand(3),
+        CurDAG->getConstant((unsigned)CC, DL, MVT::i32));
+    ReplaceNode(Node, New.getNode());
+    SelectCode(New.getNode());
+    return;
+  }
   case ISD::BR_CC:
     report_fatal_error("lx32: unexpected generic BR_CC during instruction selection");
-  case ISD::FrameIndex:
-    SelectFrameIndex(Node);
-    return;
   default:
     break;
   }

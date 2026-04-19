@@ -12,6 +12,7 @@ tablegen(LLVM LX32GenMCCodeEmitter.inc -gen-emitter)
 tablegen(LLVM LX32GenAsmMatcher.inc -gen-asm-matcher)
 tablegen(LLVM LX32GenSubtargetInfo.inc -gen-subtarget)
 tablegen(LLVM LX32GenCallingConv.inc -gen-callingconv)
+tablegen(LLVM LX32GenDAGISel.inc -gen-dag-isel)
 
 add_public_tablegen_target(LX32CommonTableGen)
 

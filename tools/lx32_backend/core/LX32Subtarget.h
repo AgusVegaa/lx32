@@ -52,6 +52,7 @@
 #include "LX32InstrInfo.h"
 #include "LX32RegisterInfo.h"
 #include "llvm/ADT/StringRef.h"
+#include "llvm/CodeGen/LibcallLoweringInfo.h"
 
 //===----------------------------------------------------------------------===//
 // Section 1 — TableGen-generated base class import
@@ -132,6 +133,11 @@ public:
     return &FrameLowering;
   }
   const TargetLowering *getTargetLowering() const override { return &TLInfo; }
+
+  // Populate libcall impls for the DAG libcall lowering pass.
+  // Called by LibcallLoweringInfo constructor for every LibcallLoweringInfo
+  // object (both TLI.Libcalls and DAG.getLibcalls()).
+  void initLibcallLoweringInfo(LibcallLoweringInfo &Info) const override;
 };
 
 } // namespace llvm
