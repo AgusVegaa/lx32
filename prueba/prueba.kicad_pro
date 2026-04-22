@@ -53,23 +53,8 @@
           "min_clearance": 0.5
         }
       },
-      "diff_pair_dimensions": [
-        {
-          "gap": 0.0,
-          "via_gap": 0.0,
-          "width": 0.0
-        }
-      ],
-      "drc_exclusions": [
-        [
-          "copper_edge_clearance|124150000|28255000|9eb68796-fddc-4b77-9720-2d374618490e|1688e4f5-810c-4519-9173-95b8b02028b2",
-          ""
-        ],
-        [
-          "copper_edge_clearance|124150000|29075000|9eb68796-fddc-4b77-9720-2d374618490e|54650468-04b0-4b01-90f1-cb190a86248d",
-          ""
-        ]
-      ],
+      "diff_pair_dimensions": [],
+      "drc_exclusions": [],
       "meta": {
         "version": 2
       },
@@ -202,12 +187,7 @@
           "td_width_to_size_filter_ratio": 0.9
         }
       ],
-      "track_widths": [
-        0.0,
-        0.2,
-        0.3,
-        0.5
-      ],
+      "track_widths": [],
       "tuning_pattern_settings": {
         "diff_pair_defaults": {
           "corner_radius_percentage": 80,
@@ -234,12 +214,7 @@
           "spacing": 0.6
         }
       },
-      "via_dimensions": [
-        {
-          "diameter": 0.0,
-          "drill": 0.0
-        }
-      ],
+      "via_dimensions": [],
       "zones_allow_external_fillets": false
     },
     "ipc2581": {
@@ -269,12 +244,7 @@
     "equivalence_files": []
   },
   "erc": {
-    "erc_exclusions": [
-      [
-        "pin_not_driven|2222500|596900|abc8d057-c4e9-44ff-b66d-0cf879a184bc|00000000-0000-0000-0000-000000000000|/aa4da59f-af40-4eaa-aaee-8784c0a9743e|/aa4da59f-af40-4eaa-aaee-8784c0a9743e|",
-        ""
-      ]
-    ],
+    "erc_exclusions": [],
     "meta": {
       "version": 0
     },
@@ -502,7 +472,7 @@
     "pinned_symbol_libs": []
   },
   "meta": {
-    "filename": "PULSAR.kicad_pro",
+    "filename": "prueba.kicad_pro",
     "version": 3
   },
   "net_settings": {
@@ -538,7 +508,7 @@
     "last_paths": {
       "idf": "",
       "netlist": "",
-      "plot": "gerbers/",
+      "plot": "",
       "specctra_dsn": "",
       "vrml": ""
     },
@@ -655,22 +625,11 @@
     "reuse_designators": true,
     "subpart_first_id": 65,
     "subpart_id_separator": 0,
-    "top_level_sheets": [
-      {
-        "filename": "PULSAR.kicad_sch",
-        "name": "Raíz",
-        "uuid": "aa4da59f-af40-4eaa-aaee-8784c0a9743e"
-      }
-    ],
+    "top_level_sheets": [],
     "used_designators": "",
     "variants": []
   },
-  "sheets": [
-    [
-      "aa4da59f-af40-4eaa-aaee-8784c0a9743e",
-      "Raíz"
-    ]
-  ],
+  "sheets": [],
   "text_variables": {},
   "tuning_profiles": {
     "meta": {

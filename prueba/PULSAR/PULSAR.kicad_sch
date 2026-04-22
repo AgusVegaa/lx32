@@ -5718,7 +5718,7 @@
 		)
 		(uuid "5c5146a6-63f8-4660-9725-102df9e45c62")
 	)
-	(label "SPI__CS0"
+	(label "SPI_CS0"
 		(at 78.74 43.18 0)
 		(effects
 			(font
@@ -6038,7 +6038,7 @@
 		)
 		(uuid "f7a33320-1113-4d20-b42c-c3b5d8f24572")
 	)
-	(label "SPI__MISO"
+	(label "SPI_SDO"
 		(at 78.74 40.64 0)
 		(effects
 			(font
@@ -6588,7 +6588,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Resistor_SMD:R_0402_1005Metric"
 			(at 59.69 50.038 90)
 			(hide yes)
 			(show_name no)
@@ -6612,6 +6612,17 @@
 		)
 		(property "Description" "Resistor"
 			(at 59.69 48.26 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC" "C23186"
+			(at 59.69 48.26 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -6781,6 +6792,17 @@
 				)
 			)
 		)
+		(property "LCSC" "C85697"
+			(at 171.45 152.4 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
 		(pin "3"
 			(uuid "e7dfdd20-2d52-4849-ac7e-fbfb7f7d89e7")
 		)
@@ -6909,7 +6931,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Resistor_SMD:R_0402_1005Metric"
 			(at 53.34 52.578 90)
 			(hide yes)
 			(show_name no)
@@ -6933,6 +6955,17 @@
 		)
 		(property "Description" "Resistor"
 			(at 53.34 50.8 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC" "C23186"
+			(at 53.34 50.8 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -7041,7 +7074,7 @@
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
-		(in_bom yes)
+		(in_bom no)
 		(on_board yes)
 		(in_pos_files yes)
 		(dnp no)
@@ -7069,7 +7102,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Connector_PinHeader_2.54mm:PinHeader_1x20_P2.54mm_Vertical"
 			(at 130.81 53.34 0)
 			(hide yes)
 			(show_name no)
@@ -7937,6 +7970,17 @@
 				)
 			)
 		)
+		(property "LCSC" "C51118"
+			(at 209.55 137.16 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
 		(pin "4"
 			(uuid "a053ebee-974b-490b-b247-b8bb919f4b4a")
 		)
@@ -8096,6 +8140,17 @@
 			)
 		)
 		(property "Description" "Unpolarized capacitor"
+			(at 223.52 149.86 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC" "C52923"
 			(at 223.52 149.86 0)
 			(hide yes)
 			(show_name no)
@@ -8656,6 +8711,17 @@
 				)
 			)
 		)
+		(property "LCSC" "C52923"
+			(at 194.31 149.86 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
 		(pin "1"
 			(uuid "af2ccddc-7c54-4d2e-a0bd-e10ca0ddb7f3")
 		)
@@ -9204,6 +9270,17 @@
 				)
 			)
 		)
+		(property "LCSC" "C168688"
+			(at 27.94 68.58 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
 		(pin "A4"
 			(uuid "b45168f1-1067-40bd-bc93-3568b375707d")
 		)
@@ -9478,7 +9555,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Package_SO:SOIC-24W_7.5x15.4mm_P1.27mm"
+		(property "Footprint" "Package_SO:SSOP-24_5.3x8.2mm_P0.65mm"
 			(at 156.21 182.88 0)
 			(hide yes)
 			(show_name no)
@@ -9502,6 +9579,17 @@
 			)
 		)
 		(property "Description" "High-Speed CMOS Logic 16-Channel Analog Multiplexer/Demultiplexer, SOIC-24"
+			(at 133.35 157.48 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC" "C98457"
 			(at 133.35 157.48 0)
 			(hide yes)
 			(show_name no)
@@ -9677,7 +9765,7 @@
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
-		(in_bom yes)
+		(in_bom no)
 		(on_board yes)
 		(in_pos_files yes)
 		(dnp no)
@@ -9705,7 +9793,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Connector_PinHeader_2.54mm:PinHeader_1x07_P2.54mm_Vertical"
 			(at 264.16 130.81 0)
 			(hide yes)
 			(show_name no)
@@ -9930,7 +10018,7 @@
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
-		(in_bom yes)
+		(in_bom no)
 		(on_board yes)
 		(in_pos_files yes)
 		(dnp no)
@@ -9958,7 +10046,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Connector_PinHeader_2.54mm:PinHeader_1x20_P2.54mm_Vertical"
 			(at 93.98 53.34 0)
 			(hide yes)
 			(show_name no)
@@ -10429,6 +10517,17 @@
 			)
 		)
 		(property "Description" "16-Bit, 500-kSPS, 8-Channels, Single-Supply, SAR ADC with Bipolar Input Range, TSSOP-38"
+			(at 209.55 74.93 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC" "C1542682"
 			(at 209.55 74.93 0)
 			(hide yes)
 			(show_name no)
