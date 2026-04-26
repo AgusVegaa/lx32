@@ -5,46 +5,36 @@
 test_pulsar_custom_isa:                 # @test_pulsar_custom_isa
 # %bb.0:
 	addi	x2, x2, -40
-	addi	x11, x2, 16
-	addi	x12, x0, 3
-	sw	x12, 0(x11)
-	lw	x11, 0(x11)
+	addi	x11, x0, 3
+	sw	x11, 16(x2)
+	lw	x11, 16(x2)
 	lx.sensor	x11, x11
-	addi	x13, x2, 12
-	sw	x11, 0(x13)
-	addi	x11, x2, 20
-	addi	x12, x0, 0
-	sw	x12, 0(x11)
-	lw	x11, 0(x11)
+	sw	x11, 12(x2)
+	addi	x11, x0, 0
+	sw	x11, 20(x2)
+	lw	x11, 20(x2)
 	lx.matrix	x11, x11
-	addi	x14, x2, 8
-	sw	x11, 0(x14)
-	addi	x11, x2, 24
-	addi	x15, x0, 42
-	sw	x15, 0(x11)
-	lw	x11, 0(x11)
-	lx.delta	x11, x11
-	addi	x12, x2, 4
-	sw	x11, 0(x12)
-	addi	x11, x2, 28
-	sw	x15, 0(x11)
-	lw	x11, 0(x11)
-	lx.chord	x15, x11
-	addi	x11, x2, 0
-	sw	x15, 0(x11)
-	addi	x15, x2, 32
-	addi	x16, x0, 10
-	sw	x16, 0(x15)
-	lw	x15, 0(x15)
-	lx.wait	x15
-	lw	x15, 0(x14)
-	addi	x14, x2, 36
-	sw	x15, 0(x14)
-	lw	x14, 0(x14)
-	lx.report	x14
-	lw	x13, 0(x13)
-	lw	x12, 0(x12)
-	lw	x11, 0(x11)
+	sw	x11, 8(x2)
+	addi	x11, x0, 42
+	sw	x11, 24(x2)
+	lw	x12, 24(x2)
+	lx.delta	x12, x12
+	sw	x12, 4(x2)
+	sw	x11, 28(x2)
+	lw	x11, 28(x2)
+	lx.chord	x11, x11
+	sw	x11, 0(x2)
+	addi	x11, x0, 10
+	sw	x11, 32(x2)
+	lw	x11, 32(x2)
+	lx.wait	x11
+	lw	x11, 8(x2)
+	sw	x11, 36(x2)
+	lw	x11, 36(x2)
+	lx.report	x11
+	lw	x11, 12(x2)
+	lw	x11, 4(x2)
+	lw	x11, 0(x2)
 	addi	x2, x2, 40
 	jalr	x0, 0(x1)
 .Lfunc_end0:
@@ -56,15 +46,12 @@ test_large_wait:                        # @test_large_wait
 # %bb.0:
 	addi	x2, x2, -8
 	lui	x11, 1
-	addi	x13, x11, 904
-	addi	x12, x2, 4
-	sw	x13, 0(x12)
-	lw	x12, 0(x12)
+	addi	x12, x11, 904
+	sw	x12, 4(x2)
+	lw	x12, 4(x2)
 	lx.wait	x12
-	addi	x12, x11, 0
-	addi	x11, x2, 0
-	sw	x12, 0(x11)
-	lw	x11, 0(x11)
+	sw	x11, 0(x2)
+	lw	x11, 0(x2)
 	lx.wait	x11
 	addi	x2, x2, 8
 	jalr	x0, 0(x1)

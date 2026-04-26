@@ -7,11 +7,14 @@
 
 #include "LX32ISelLowering.h"
 
+#include "LX32InstrInfo.h"
 #include "LX32RegisterInfo.h"
 #include "LX32Subtarget.h"
 
+#include "llvm/CodeGen/MachineBasicBlock.h"
 #include "llvm/CodeGen/MachineFrameInfo.h"
 #include "llvm/CodeGen/MachineFunction.h"
+#include "llvm/CodeGen/MachineInstrBuilder.h"
 #include "llvm/CodeGen/MachineRegisterInfo.h"
 #include "llvm/IR/IntrinsicsLX32.h"
 #include "llvm/Support/Debug.h"
@@ -76,6 +79,39 @@ LX32TargetLowering::LX32TargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::CTTZ, MVT::i32, Expand);
   setOperationAction(ISD::CTPOP, MVT::i32, Expand);
 
+  // No sign-extend-inreg hardware; expand to shift pairs (sll + sra).
+  setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i16, Expand);
+  setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i8,  Expand);
+  setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i1,  Expand);
+
+  // ── i64 expansion support ───────────────────────────────────────────────────
+  // LX32 is a 32-bit integer-only target.  i64 values are split into two i32
+  // registers.  LLVM needs all carry/overflow helpers explicitly marked Expand
+  // so the legalizer uses the pure-i32 ADD+SETULT fallback (not a non-existent
+  // hardware instruction).
+  //
+  // Without these, UADDO/UADDO_CARRY/ADDC etc. default to "Legal" (because
+  // MVT::i32 is a legal type) but have no TableGen patterns — crashing during
+  // instruction selection for any function that uses 64-bit arithmetic.
+  setOperationAction(ISD::ADDC,        MVT::i32, Expand);
+  setOperationAction(ISD::ADDE,        MVT::i32, Expand);
+  setOperationAction(ISD::SUBC,        MVT::i32, Expand);
+  setOperationAction(ISD::SUBE,        MVT::i32, Expand);
+  setOperationAction(ISD::UADDO,       MVT::i32, Expand);
+  setOperationAction(ISD::USUBO,       MVT::i32, Expand);
+  setOperationAction(ISD::UADDO_CARRY, MVT::i32, Expand);
+  setOperationAction(ISD::USUBO_CARRY, MVT::i32, Expand);
+
+  // i64 shifts: no *_PARTS instruction exists; fall back to __ashldi3 etc.
+  // libcalls provided by compiler_builtins.
+  setOperationAction(ISD::SHL_PARTS, MVT::i32, Expand);
+  setOperationAction(ISD::SRL_PARTS, MVT::i32, Expand);
+  setOperationAction(ISD::SRA_PARTS, MVT::i32, Expand);
+
+  // SELECT_CC: lower to LX32ISD::SELECT_CC which PseudoSELECT_CC selects and
+  // EmitInstrWithCustomInserter expands to a branch diamond.
+  setOperationAction(ISD::SELECT_CC, MVT::i32, Custom);
+
   // SELECT: LX32 has no conditional-move instruction.  Lower to a branch
   // sequence (see lowerSELECT) so the DAG-to-DAG pass can emit real branches.
   setOperationAction(ISD::SELECT, MVT::i32, Custom);
@@ -88,8 +124,8 @@ LX32TargetLowering::LX32TargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::BR_CC, MVT::i32, Custom);
   setOperationAction(ISD::BRCOND, MVT::Other, Custom);
 
-  setOperationAction(ISD::INTRINSIC_WO_CHAIN, MVT::i32, Custom);
-  setOperationAction(ISD::INTRINSIC_W_CHAIN,  MVT::i32, Custom);
+  setOperationAction(ISD::INTRINSIC_WO_CHAIN, MVT::Other, Custom);
+  setOperationAction(ISD::INTRINSIC_W_CHAIN,  MVT::Other, Custom);
   setOperationAction(ISD::INTRINSIC_VOID,     MVT::Other, Custom);
 
   // Global and block addresses: lower to PseudoLA which the AsmPrinter
@@ -102,6 +138,118 @@ LX32TargetLowering::LX32TargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::ConstantPool,  MVT::i32, Expand);
 
   setMaxAtomicSizeInBitsSupported(0);
+
+  // ── Soft-float: arithmetic ─────────────────────────────────────────────────
+  // LX32 has no FPU; all f32/f64 ops map to standard compiler_builtins/libgcc
+  // soft-float routines.  The RTLIB system needs explicit impl registrations
+  // because setTargetRuntimeLibcallSets() does not know about the lx32 triple.
+  setLibcallImpl(RTLIB::ADD_F32, RTLIB::impl___addsf3);
+  setLibcallImpl(RTLIB::ADD_F64, RTLIB::impl___adddf3);
+  setLibcallImpl(RTLIB::SUB_F32, RTLIB::impl___subsf3);
+  setLibcallImpl(RTLIB::SUB_F64, RTLIB::impl___subdf3);
+  setLibcallImpl(RTLIB::MUL_F32, RTLIB::impl___mulsf3);
+  setLibcallImpl(RTLIB::MUL_F64, RTLIB::impl___muldf3);
+  setLibcallImpl(RTLIB::DIV_F32, RTLIB::impl___divsf3);
+  setLibcallImpl(RTLIB::DIV_F64, RTLIB::impl___divdf3);
+
+  // ── Soft-float: type conversions ───────────────────────────────────────────
+  setLibcallImpl(RTLIB::FPROUND_F64_F32,   RTLIB::impl___truncdfsf2);
+  setLibcallImpl(RTLIB::FPEXT_F32_F64,     RTLIB::impl___extendsfdf2);
+  setLibcallImpl(RTLIB::FPTOSINT_F32_I32,  RTLIB::impl___fixsfsi);
+  setLibcallImpl(RTLIB::FPTOSINT_F32_I64,  RTLIB::impl___fixsfdi);
+  setLibcallImpl(RTLIB::FPTOSINT_F64_I32,  RTLIB::impl___fixdfsi);
+  setLibcallImpl(RTLIB::FPTOSINT_F64_I64,  RTLIB::impl___fixdfdi);
+  setLibcallImpl(RTLIB::FPTOUINT_F32_I32,  RTLIB::impl___fixunssfsi);
+  setLibcallImpl(RTLIB::FPTOUINT_F32_I64,  RTLIB::impl___fixunssfdi);
+  setLibcallImpl(RTLIB::FPTOUINT_F64_I32,  RTLIB::impl___fixunsdfsi);
+  setLibcallImpl(RTLIB::FPTOUINT_F64_I64,  RTLIB::impl___fixunsdfdi);
+  setLibcallImpl(RTLIB::SINTTOFP_I32_F32,  RTLIB::impl___floatsisf);
+  setLibcallImpl(RTLIB::SINTTOFP_I32_F64,  RTLIB::impl___floatsidf);
+  setLibcallImpl(RTLIB::SINTTOFP_I64_F32,  RTLIB::impl___floatdisf);
+  setLibcallImpl(RTLIB::SINTTOFP_I64_F64,  RTLIB::impl___floatdidf);
+  setLibcallImpl(RTLIB::UINTTOFP_I32_F32,  RTLIB::impl___floatunsisf);
+  setLibcallImpl(RTLIB::UINTTOFP_I32_F64,  RTLIB::impl___floatunsidf);
+  setLibcallImpl(RTLIB::UINTTOFP_I64_F32,  RTLIB::impl___floatundisf);
+  setLibcallImpl(RTLIB::UINTTOFP_I64_F64,  RTLIB::impl___floatundidf);
+
+  // ── Soft-float: comparisons ────────────────────────────────────────────────
+  setLibcallImpl(RTLIB::OEQ_F32, RTLIB::impl___eqsf2);
+  setLibcallImpl(RTLIB::OEQ_F64, RTLIB::impl___eqdf2);
+  setLibcallImpl(RTLIB::OGE_F32, RTLIB::impl___gesf2);
+  setLibcallImpl(RTLIB::OGE_F64, RTLIB::impl___gedf2);
+  setLibcallImpl(RTLIB::OGT_F32, RTLIB::impl___gtsf2);
+  setLibcallImpl(RTLIB::OGT_F64, RTLIB::impl___gtdf2);
+  setLibcallImpl(RTLIB::OLE_F32, RTLIB::impl___lesf2);
+  setLibcallImpl(RTLIB::OLE_F64, RTLIB::impl___ledf2);
+  setLibcallImpl(RTLIB::OLT_F32, RTLIB::impl___ltsf2);
+  setLibcallImpl(RTLIB::OLT_F64, RTLIB::impl___ltdf2);
+  setLibcallImpl(RTLIB::UNE_F32, RTLIB::impl___nesf2);
+  setLibcallImpl(RTLIB::UNE_F64, RTLIB::impl___nedf2);
+  setLibcallImpl(RTLIB::UO_F32,  RTLIB::impl___unordsf2);
+  setLibcallImpl(RTLIB::UO_F64,  RTLIB::impl___unorddf2);
+
+  // ── Soft-float: math functions ─────────────────────────────────────────────
+  setLibcallImpl(RTLIB::CEIL_F32,      RTLIB::impl_ceilf);
+  setLibcallImpl(RTLIB::CEIL_F64,      RTLIB::impl_ceil);
+  setLibcallImpl(RTLIB::COPYSIGN_F32,  RTLIB::impl_copysignf);
+  setLibcallImpl(RTLIB::COPYSIGN_F64,  RTLIB::impl_copysign);
+  setLibcallImpl(RTLIB::FLOOR_F32,     RTLIB::impl_floorf);
+  setLibcallImpl(RTLIB::FLOOR_F64,     RTLIB::impl_floor);
+  setLibcallImpl(RTLIB::FMAX_F32,      RTLIB::impl_fmaxf);
+  setLibcallImpl(RTLIB::FMAX_F64,      RTLIB::impl_fmax);
+  setLibcallImpl(RTLIB::FMAXIMUM_F32,  RTLIB::impl_fmaximumf);
+  setLibcallImpl(RTLIB::FMAXIMUM_F64,  RTLIB::impl_fmaximum);
+  setLibcallImpl(RTLIB::FMIN_F32,      RTLIB::impl_fminf);
+  setLibcallImpl(RTLIB::FMIN_F64,      RTLIB::impl_fmin);
+  setLibcallImpl(RTLIB::FMINIMUM_F32,  RTLIB::impl_fminimumf);
+  setLibcallImpl(RTLIB::FMINIMUM_F64,  RTLIB::impl_fminimum);
+  setLibcallImpl(RTLIB::NEARBYINT_F32, RTLIB::impl_nearbyintf);
+  setLibcallImpl(RTLIB::NEARBYINT_F64, RTLIB::impl_nearbyint);
+  setLibcallImpl(RTLIB::RINT_F32,      RTLIB::impl_rintf);
+  setLibcallImpl(RTLIB::RINT_F64,      RTLIB::impl_rint);
+  setLibcallImpl(RTLIB::ROUND_F32,     RTLIB::impl_roundf);
+  setLibcallImpl(RTLIB::ROUND_F64,     RTLIB::impl_round);
+  setLibcallImpl(RTLIB::ROUNDEVEN_F32, RTLIB::impl_roundevenf);
+  setLibcallImpl(RTLIB::ROUNDEVEN_F64, RTLIB::impl_roundeven);
+  setLibcallImpl(RTLIB::SQRT_F32,      RTLIB::impl_sqrtf);
+  setLibcallImpl(RTLIB::SQRT_F64,      RTLIB::impl_sqrt);
+  setLibcallImpl(RTLIB::TRUNC_F32,     RTLIB::impl_truncf);
+  setLibcallImpl(RTLIB::TRUNC_F64,     RTLIB::impl_trunc);
+
+  // ── Integer: division/remainder (Expand → library call) ───────────────────
+  setLibcallImpl(RTLIB::SDIV_I32, RTLIB::impl___divsi3);
+  setLibcallImpl(RTLIB::UDIV_I32, RTLIB::impl___udivsi3);
+  setLibcallImpl(RTLIB::SREM_I32, RTLIB::impl___modsi3);
+  setLibcallImpl(RTLIB::UREM_I32, RTLIB::impl___umodsi3);
+  setLibcallImpl(RTLIB::SDIV_I64, RTLIB::impl___divdi3);
+  setLibcallImpl(RTLIB::UDIV_I64, RTLIB::impl___udivdi3);
+  setLibcallImpl(RTLIB::SREM_I64, RTLIB::impl___moddi3);
+  setLibcallImpl(RTLIB::UREM_I64, RTLIB::impl___umoddi3);
+
+  // ── Integer: 64-bit helpers ────────────────────────────────────────────────
+  setLibcallImpl(RTLIB::MUL_I64, RTLIB::impl___muldi3);
+  setLibcallImpl(RTLIB::SHL_I64, RTLIB::impl___ashldi3);
+  setLibcallImpl(RTLIB::SRA_I64, RTLIB::impl___ashrdi3);
+  setLibcallImpl(RTLIB::SRL_I64, RTLIB::impl___lshrdi3);
+
+  // ── Integer: 32-bit multiply ───────────────────────────────────────────────
+  setLibcallImpl(RTLIB::MUL_I32, RTLIB::impl___mulsi3);
+
+  // ── Integer: 128-bit helpers ───────────────────────────────────────────────
+  setLibcallImpl(RTLIB::MUL_I128,  RTLIB::impl___multi3);
+  setLibcallImpl(RTLIB::SDIV_I128, RTLIB::impl___divti3);
+  setLibcallImpl(RTLIB::UDIV_I128, RTLIB::impl___udivti3);
+  setLibcallImpl(RTLIB::SREM_I128, RTLIB::impl___modti3);
+  setLibcallImpl(RTLIB::UREM_I128, RTLIB::impl___umodti3);
+  setLibcallImpl(RTLIB::SHL_I128,  RTLIB::impl___ashlti3);
+  setLibcallImpl(RTLIB::SRA_I128,  RTLIB::impl___ashrti3);
+  setLibcallImpl(RTLIB::SRL_I128,  RTLIB::impl___lshrti3);
+
+  // ── Memory functions ───────────────────────────────────────────────────────
+  setLibcallImpl(RTLIB::MEMCPY,  RTLIB::impl_memcpy);
+  setLibcallImpl(RTLIB::MEMMOVE, RTLIB::impl_memmove);
+  setLibcallImpl(RTLIB::MEMSET,  RTLIB::impl_memset);
+  setLibcallImpl(RTLIB::MEMCMP,  RTLIB::impl_memcmp);
 
   computeRegisterProperties(STI.getRegisterInfo());
 }
@@ -340,13 +488,12 @@ SDValue LX32TargetLowering::LowerCall(
   }
 
   SDValue Callee = CLI.Callee;
-  if (const auto *ES = dyn_cast<ExternalSymbolSDNode>(Callee)) {
-    Callee = DAG.getTargetExternalSymbol(ES->getSymbol(), PtrVT);
-  } else if (const auto *GA = dyn_cast<GlobalAddressSDNode>(Callee)) {
+  if (const auto *GA = dyn_cast<GlobalAddressSDNode>(Callee)) {
     Callee = DAG.getTargetGlobalAddress(GA->getGlobal(), DL, PtrVT, GA->getOffset());
-  } else {
-    report_fatal_error("lx32: only direct global/external calls are supported");
+  } else if (const auto *ES = dyn_cast<ExternalSymbolSDNode>(Callee)) {
+    Callee = DAG.getTargetExternalSymbol(ES->getSymbol(), PtrVT);
   }
+  // else: indirect call through a register — Callee is already an SDValue
 
   SmallVector<SDValue, 8> CallOps;
   CallOps.push_back(Chain);
@@ -368,11 +515,22 @@ SDValue LX32TargetLowering::LowerCall(
   CCState RetCC(CLI.CallConv, CLI.IsVarArg, MF, RetLocs, *DAG.getContext());
   RetCC.AnalyzeCallResult(CLI.Ins, RetCC_LX32);
 
+  MachineFrameInfo &MFI = MF.getFrameInfo();
   for (unsigned I = 0, E = RetLocs.size(); I != E; ++I) {
     const CCValAssign &VA = RetLocs[I];
-    SDValue Ret = DAG.getCopyFromReg(Chain, DL, VA.getLocReg(), VA.getLocVT(), Glue);
-    Chain = Ret.getValue(1);
-    Glue = Ret.getValue(2);
+    SDValue Ret;
+    if (VA.isRegLoc()) {
+      Ret = DAG.getCopyFromReg(Chain, DL, VA.getLocReg(), VA.getLocVT(), Glue);
+      Chain = Ret.getValue(1);
+      Glue = Ret.getValue(2);
+    } else {
+      int FI = MFI.CreateFixedObject(VA.getLocVT().getStoreSize(),
+                                     VA.getLocMemOffset(), false);
+      SDValue FIN = DAG.getFrameIndex(FI, PtrVT);
+      Ret = DAG.getLoad(VA.getLocVT(), DL, Chain, FIN,
+                        MachinePointerInfo::getFixedStack(MF, FI));
+      Chain = Ret.getValue(1);
+    }
     InVals.push_back(lowerCCValue(Ret, VA.getLocInfo(), CLI.Ins[I].VT, DAG, DL));
   }
 
@@ -416,8 +574,16 @@ SDValue LX32TargetLowering::LowerReturn(
       report_fatal_error("lx32: unsupported return value location info");
     }
 
-    Chain = DAG.getCopyToReg(Chain, DL, VA.getLocReg(), Val, Flag);
-    Flag = Chain.getValue(1);
+    if (VA.isRegLoc()) {
+      Chain = DAG.getCopyToReg(Chain, DL, VA.getLocReg(), Val, Flag);
+      Flag = Chain.getValue(1);
+    } else {
+      int FI = MF.getFrameInfo().CreateFixedObject(VA.getLocVT().getStoreSize(),
+                                     VA.getLocMemOffset(), true);
+      SDValue FIN = DAG.getFrameIndex(FI, getPointerTy(DAG.getDataLayout()));
+      Chain = DAG.getStore(Chain, DL, Val, FIN,
+                           MachinePointerInfo::getFixedStack(MF, FI));
+    }
   }
 
   SmallVector<SDValue, 4> RetOps;
@@ -440,6 +606,8 @@ SDValue LX32TargetLowering::LowerOperation(SDValue Op,
     return lowerBlockAddress(Op, DAG);
   case ISD::SELECT:
     return lowerSELECT(Op, DAG);
+  case ISD::SELECT_CC:
+    return lowerSELECT_CC(Op, DAG);
   case ISD::INTRINSIC_WO_CHAIN:
   case ISD::INTRINSIC_W_CHAIN:
   case ISD::INTRINSIC_VOID:
@@ -494,12 +662,115 @@ SDValue LX32TargetLowering::lowerSELECT(SDValue Op, SelectionDAG &DAG) const {
   // BRCC lowering path handles it and LLVM converts the whole SELECT to a
   // if/else basic-block split with a PHI.
   //
-  // Normalise: "cond != 0" maps directly to the BRCC infrastructure.
+  // Normalise: "cond != 0" maps directly to PseudoSELECT_CC.
+  // Store condition code as an i32 integer constant (ISD::CondCode enum value).
+  // After type legalization Cond is already the legal integer type (i32).
+  // Compare Cond != 0 to select TrueV or FalseV.
   return DAG.getNode(LX32ISD::SELECT_CC, DL, Op.getValueType(),
                      Cond,
-                     DAG.getConstant(0, DL, MVT::i32),
+                     DAG.getConstant(0, DL, Cond.getValueType()),
                      TrueV, FalseV,
-                     DAG.getCondCode(ISD::SETNE));
+                     DAG.getConstant((unsigned)ISD::SETNE, DL, MVT::i32));
+}
+
+SDValue LX32TargetLowering::lowerSELECT_CC(SDValue Op,
+                                            SelectionDAG &DAG) const {
+  SDLoc DL(Op);
+  ISD::CondCode CC = cast<CondCodeSDNode>(Op.getOperand(4))->get();
+  // ISD::SELECT_CC(lhs, rhs, truev, falsev, cc) →
+  // LX32ISD::SELECT_CC(lhs, rhs, truev, falsev, cc_as_i32_constant).
+  return DAG.getNode(LX32ISD::SELECT_CC, DL, Op.getValueType(),
+                     Op.getOperand(0), Op.getOperand(1),
+                     Op.getOperand(2), Op.getOperand(3),
+                     DAG.getConstant((unsigned)CC, DL, MVT::i32));
+}
+
+// Expand PseudoSELECT_CC (usesCustomInserter) into a branch diamond.
+//
+// Layout after expansion:
+//   HeadMBB:  bcc lhs, rhs, IfTrueMBB   (branch-if-true)
+//             (fall through to TailMBB when condition is false)
+//   IfTrueMBB: j TailMBB
+//   TailMBB:  dst = phi [truev, IfTrueMBB], [falsev, HeadMBB]
+//             <rest of original BB>
+//
+// This mirrors RISC-V's EmitInstrWithCustomInserter pattern.
+MachineBasicBlock *LX32TargetLowering::EmitInstrWithCustomInserter(
+    MachineInstr &MI, MachineBasicBlock *HeadMBB) const {
+  const TargetInstrInfo *TII =
+      HeadMBB->getParent()->getSubtarget().getInstrInfo();
+  DebugLoc DL = MI.getDebugLoc();
+  MachineFunction *MF = HeadMBB->getParent();
+
+  assert(MI.getOpcode() == LX32::PseudoSELECT_CC &&
+         "Expected PseudoSELECT_CC");
+
+  // Operands: dst, lhs, rhs, cc_imm, truev, falsev
+  Register DstReg  = MI.getOperand(0).getReg();
+  Register LHSReg  = MI.getOperand(1).getReg();
+  Register RHSReg  = MI.getOperand(2).getReg();
+  int64_t  CCVal   = MI.getOperand(3).getImm();
+  Register TrueReg = MI.getOperand(4).getReg();
+  Register FalseReg= MI.getOperand(5).getReg();
+
+  // Map ISD::CondCode enum value to the corresponding conditional branch.
+  unsigned BranchOpc;
+  switch (static_cast<ISD::CondCode>(CCVal)) {
+  default: llvm_unreachable("lx32: unsupported condition in PseudoSELECT_CC");
+  case ISD::SETEQ:  BranchOpc = LX32::PseudoBEQ;  break;
+  case ISD::SETNE:  BranchOpc = LX32::PseudoBNE;  break;
+  case ISD::SETLT:  BranchOpc = LX32::PseudoBLT;  break;
+  case ISD::SETGE:  BranchOpc = LX32::PseudoBGE;  break;
+  case ISD::SETULT: BranchOpc = LX32::PseudoBLTU; break;
+  case ISD::SETUGE: BranchOpc = LX32::PseudoBGEU; break;
+  case ISD::SETGT:
+    std::swap(LHSReg, RHSReg);
+    BranchOpc = LX32::PseudoBLT;
+    break;
+  case ISD::SETLE:
+    std::swap(LHSReg, RHSReg);
+    BranchOpc = LX32::PseudoBGE;
+    break;
+  case ISD::SETUGT:
+    std::swap(LHSReg, RHSReg);
+    BranchOpc = LX32::PseudoBLTU;
+    break;
+  case ISD::SETULE:
+    std::swap(LHSReg, RHSReg);
+    BranchOpc = LX32::PseudoBGEU;
+    break;
+  }
+
+  const BasicBlock *LLVMBB = HeadMBB->getBasicBlock();
+  MachineBasicBlock *IfTrueMBB = MF->CreateMachineBasicBlock(LLVMBB);
+  MachineBasicBlock *TailMBB   = MF->CreateMachineBasicBlock(LLVMBB);
+
+  // Insert in layout order: HeadMBB → IfTrueMBB → TailMBB → (rest).
+  MF->insert(std::next(HeadMBB->getIterator()), IfTrueMBB);
+  MF->insert(std::next(IfTrueMBB->getIterator()), TailMBB);
+
+  // Move instructions after MI (and HeadMBB's successors) into TailMBB.
+  TailMBB->splice(TailMBB->begin(), HeadMBB,
+                  std::next(MI.getIterator()), HeadMBB->end());
+  TailMBB->transferSuccessors(HeadMBB);
+
+  // HeadMBB: branch to IfTrueMBB if condition holds; fall through to TailMBB.
+  BuildMI(HeadMBB, DL, TII->get(BranchOpc))
+      .addReg(LHSReg).addReg(RHSReg).addMBB(IfTrueMBB);
+  HeadMBB->addSuccessor(IfTrueMBB);
+  HeadMBB->addSuccessor(TailMBB);
+
+  // IfTrueMBB: unconditional jump to TailMBB.
+  BuildMI(IfTrueMBB, DL, TII->get(LX32::PseudoBR)).addMBB(TailMBB);
+  IfTrueMBB->addSuccessor(TailMBB);
+
+  // TailMBB: PHI selects TrueReg (from IfTrueMBB) or FalseReg (from HeadMBB).
+  BuildMI(*TailMBB, TailMBB->begin(), DL, TII->get(TargetOpcode::PHI), DstReg)
+      .addReg(TrueReg).addMBB(IfTrueMBB)
+      .addReg(FalseReg).addMBB(HeadMBB);
+
+  MI.eraseFromParent();
+  return TailMBB;
 }
 
 SDValue LX32TargetLowering::lowerINTRINSIC(SDValue Op, SelectionDAG &DAG) const {
@@ -511,7 +782,6 @@ SDValue LX32TargetLowering::lowerINTRINSIC(SDValue Op, SelectionDAG &DAG) const 
 
   LLVM_DEBUG(dbgs() << "lx32-lower: lowerINTRINSIC #" << IntNo
                     << " HasChain=" << HasChain << "\n");
-
   // Read ops — produce a value, no side effects, never stall.
   //   Lowering: (intrinsic_id, rs1) → (rd : i32)
   //   These are modelled as INTRINSIC_WO_CHAIN; ArgBase = 1.

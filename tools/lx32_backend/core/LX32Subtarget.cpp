@@ -17,6 +17,8 @@
 #include "LX32Subtarget.h"
 #include "LX32TargetMachine.h"
 
+#include "llvm/CodeGen/LibcallLoweringInfo.h"
+#include "llvm/IR/RuntimeLibcalls.h"
 #include "llvm/Support/Debug.h"
 
 #define DEBUG_TYPE "lx32-subtarget"
@@ -93,6 +95,126 @@ LX32Subtarget::LX32Subtarget(const Triple &TT, StringRef CPU,
   // must be present so that feature plumbing works correctly when optional
   // extensions are added.
   ParseSubtargetFeatures(NormCPU, NormTune, FS);
+}
+
+void LX32Subtarget::initLibcallLoweringInfo(LibcallLoweringInfo &Info) const {
+  // LX32 has no FPU; all f32/f64 operations use the standard GCC/compiler_builtins
+  // soft-float ABI.  Register impls here so both TLI.Libcalls and DAG.getLibcalls()
+  // (which comes through this hook from the LibcallLoweringModuleAnalysis pass)
+  // can resolve libcall names.
+
+  // ── f32/f64 arithmetic ─────────────────────────────────────────────────────
+  Info.setLibcallImpl(RTLIB::ADD_F32, RTLIB::impl___addsf3);
+  Info.setLibcallImpl(RTLIB::ADD_F64, RTLIB::impl___adddf3);
+  Info.setLibcallImpl(RTLIB::SUB_F32, RTLIB::impl___subsf3);
+  Info.setLibcallImpl(RTLIB::SUB_F64, RTLIB::impl___subdf3);
+  Info.setLibcallImpl(RTLIB::MUL_F32, RTLIB::impl___mulsf3);
+  Info.setLibcallImpl(RTLIB::MUL_F64, RTLIB::impl___muldf3);
+  Info.setLibcallImpl(RTLIB::DIV_F32, RTLIB::impl___divsf3);
+  Info.setLibcallImpl(RTLIB::DIV_F64, RTLIB::impl___divdf3);
+
+  // ── float ↔ float conversions ─────────────────────────────────────────────
+  Info.setLibcallImpl(RTLIB::FPROUND_F64_F32,  RTLIB::impl___truncdfsf2);
+  Info.setLibcallImpl(RTLIB::FPEXT_F32_F64,    RTLIB::impl___extendsfdf2);
+
+  // ── float → int conversions ────────────────────────────────────────────────
+  Info.setLibcallImpl(RTLIB::FPTOSINT_F32_I32, RTLIB::impl___fixsfsi);
+  Info.setLibcallImpl(RTLIB::FPTOSINT_F32_I64, RTLIB::impl___fixsfdi);
+  Info.setLibcallImpl(RTLIB::FPTOSINT_F64_I32, RTLIB::impl___fixdfsi);
+  Info.setLibcallImpl(RTLIB::FPTOSINT_F64_I64, RTLIB::impl___fixdfdi);
+  Info.setLibcallImpl(RTLIB::FPTOUINT_F32_I32, RTLIB::impl___fixunssfsi);
+  Info.setLibcallImpl(RTLIB::FPTOUINT_F32_I64, RTLIB::impl___fixunssfdi);
+  Info.setLibcallImpl(RTLIB::FPTOUINT_F64_I32, RTLIB::impl___fixunsdfsi);
+  Info.setLibcallImpl(RTLIB::FPTOUINT_F64_I64, RTLIB::impl___fixunsdfdi);
+
+  // ── int → float conversions ────────────────────────────────────────────────
+  Info.setLibcallImpl(RTLIB::SINTTOFP_I32_F32, RTLIB::impl___floatsisf);
+  Info.setLibcallImpl(RTLIB::SINTTOFP_I32_F64, RTLIB::impl___floatsidf);
+  Info.setLibcallImpl(RTLIB::SINTTOFP_I64_F32, RTLIB::impl___floatdisf);
+  Info.setLibcallImpl(RTLIB::SINTTOFP_I64_F64, RTLIB::impl___floatdidf);
+  Info.setLibcallImpl(RTLIB::UINTTOFP_I32_F32, RTLIB::impl___floatunsisf);
+  Info.setLibcallImpl(RTLIB::UINTTOFP_I32_F64, RTLIB::impl___floatunsidf);
+  Info.setLibcallImpl(RTLIB::UINTTOFP_I64_F32, RTLIB::impl___floatundisf);
+  Info.setLibcallImpl(RTLIB::UINTTOFP_I64_F64, RTLIB::impl___floatundidf);
+
+  // ── float comparisons ──────────────────────────────────────────────────────
+  Info.setLibcallImpl(RTLIB::OEQ_F32, RTLIB::impl___eqsf2);
+  Info.setLibcallImpl(RTLIB::OEQ_F64, RTLIB::impl___eqdf2);
+  Info.setLibcallImpl(RTLIB::OGE_F32, RTLIB::impl___gesf2);
+  Info.setLibcallImpl(RTLIB::OGE_F64, RTLIB::impl___gedf2);
+  Info.setLibcallImpl(RTLIB::OGT_F32, RTLIB::impl___gtsf2);
+  Info.setLibcallImpl(RTLIB::OGT_F64, RTLIB::impl___gtdf2);
+  Info.setLibcallImpl(RTLIB::OLE_F32, RTLIB::impl___lesf2);
+  Info.setLibcallImpl(RTLIB::OLE_F64, RTLIB::impl___ledf2);
+  Info.setLibcallImpl(RTLIB::OLT_F32, RTLIB::impl___ltsf2);
+  Info.setLibcallImpl(RTLIB::OLT_F64, RTLIB::impl___ltdf2);
+  Info.setLibcallImpl(RTLIB::UNE_F32, RTLIB::impl___nesf2);
+  Info.setLibcallImpl(RTLIB::UNE_F64, RTLIB::impl___nedf2);
+  Info.setLibcallImpl(RTLIB::UO_F32,  RTLIB::impl___unordsf2);
+  Info.setLibcallImpl(RTLIB::UO_F64,  RTLIB::impl___unorddf2);
+
+  // ── libm: rounding and math functions ─────────────────────────────────────
+  Info.setLibcallImpl(RTLIB::CEIL_F32,      RTLIB::impl_ceilf);
+  Info.setLibcallImpl(RTLIB::CEIL_F64,      RTLIB::impl_ceil);
+  Info.setLibcallImpl(RTLIB::COPYSIGN_F32,  RTLIB::impl_copysignf);
+  Info.setLibcallImpl(RTLIB::COPYSIGN_F64,  RTLIB::impl_copysign);
+  Info.setLibcallImpl(RTLIB::FLOOR_F32,     RTLIB::impl_floorf);
+  Info.setLibcallImpl(RTLIB::FLOOR_F64,     RTLIB::impl_floor);
+  Info.setLibcallImpl(RTLIB::FMAX_F32,      RTLIB::impl_fmaxf);
+  Info.setLibcallImpl(RTLIB::FMAX_F64,      RTLIB::impl_fmax);
+  Info.setLibcallImpl(RTLIB::FMAXIMUM_F32,  RTLIB::impl_fmaximumf);
+  Info.setLibcallImpl(RTLIB::FMAXIMUM_F64,  RTLIB::impl_fmaximum);
+  Info.setLibcallImpl(RTLIB::FMIN_F32,      RTLIB::impl_fminf);
+  Info.setLibcallImpl(RTLIB::FMIN_F64,      RTLIB::impl_fmin);
+  Info.setLibcallImpl(RTLIB::FMINIMUM_F32,  RTLIB::impl_fminimumf);
+  Info.setLibcallImpl(RTLIB::FMINIMUM_F64,  RTLIB::impl_fminimum);
+  Info.setLibcallImpl(RTLIB::NEARBYINT_F32, RTLIB::impl_nearbyintf);
+  Info.setLibcallImpl(RTLIB::NEARBYINT_F64, RTLIB::impl_nearbyint);
+  Info.setLibcallImpl(RTLIB::RINT_F32,      RTLIB::impl_rintf);
+  Info.setLibcallImpl(RTLIB::RINT_F64,      RTLIB::impl_rint);
+  Info.setLibcallImpl(RTLIB::ROUND_F32,     RTLIB::impl_roundf);
+  Info.setLibcallImpl(RTLIB::ROUND_F64,     RTLIB::impl_round);
+  Info.setLibcallImpl(RTLIB::ROUNDEVEN_F32, RTLIB::impl_roundevenf);
+  Info.setLibcallImpl(RTLIB::ROUNDEVEN_F64, RTLIB::impl_roundeven);
+  Info.setLibcallImpl(RTLIB::SQRT_F32,      RTLIB::impl_sqrtf);
+  Info.setLibcallImpl(RTLIB::SQRT_F64,      RTLIB::impl_sqrt);
+  Info.setLibcallImpl(RTLIB::TRUNC_F32,     RTLIB::impl_truncf);
+  Info.setLibcallImpl(RTLIB::TRUNC_F64,     RTLIB::impl_trunc);
+
+  // ── integer division (Expand → library call) ───────────────────────────────
+  Info.setLibcallImpl(RTLIB::SDIV_I32, RTLIB::impl___divsi3);
+  Info.setLibcallImpl(RTLIB::UDIV_I32, RTLIB::impl___udivsi3);
+  Info.setLibcallImpl(RTLIB::SREM_I32, RTLIB::impl___modsi3);
+  Info.setLibcallImpl(RTLIB::UREM_I32, RTLIB::impl___umodsi3);
+  Info.setLibcallImpl(RTLIB::SDIV_I64, RTLIB::impl___divdi3);
+  Info.setLibcallImpl(RTLIB::UDIV_I64, RTLIB::impl___udivdi3);
+  Info.setLibcallImpl(RTLIB::SREM_I64, RTLIB::impl___moddi3);
+  Info.setLibcallImpl(RTLIB::UREM_I64, RTLIB::impl___umoddi3);
+
+  // ── 64-bit integer helpers ─────────────────────────────────────────────────
+  Info.setLibcallImpl(RTLIB::MUL_I64, RTLIB::impl___muldi3);
+  Info.setLibcallImpl(RTLIB::SHL_I64, RTLIB::impl___ashldi3);
+  Info.setLibcallImpl(RTLIB::SRA_I64, RTLIB::impl___ashrdi3);
+  Info.setLibcallImpl(RTLIB::SRL_I64, RTLIB::impl___lshrdi3);
+
+  // ── 32-bit integer multiply ────────────────────────────────────────────────
+  Info.setLibcallImpl(RTLIB::MUL_I32, RTLIB::impl___mulsi3);
+
+  // ── 128-bit integer helpers ────────────────────────────────────────────────
+  Info.setLibcallImpl(RTLIB::MUL_I128,  RTLIB::impl___multi3);
+  Info.setLibcallImpl(RTLIB::SDIV_I128, RTLIB::impl___divti3);
+  Info.setLibcallImpl(RTLIB::UDIV_I128, RTLIB::impl___udivti3);
+  Info.setLibcallImpl(RTLIB::SREM_I128, RTLIB::impl___modti3);
+  Info.setLibcallImpl(RTLIB::UREM_I128, RTLIB::impl___umodti3);
+  Info.setLibcallImpl(RTLIB::SHL_I128,  RTLIB::impl___ashlti3);
+  Info.setLibcallImpl(RTLIB::SRA_I128,  RTLIB::impl___ashrti3);
+  Info.setLibcallImpl(RTLIB::SRL_I128,  RTLIB::impl___lshrti3);
+
+  // ── Memory functions ───────────────────────────────────────────────────────
+  Info.setLibcallImpl(RTLIB::MEMCPY,  RTLIB::impl_memcpy);
+  Info.setLibcallImpl(RTLIB::MEMMOVE, RTLIB::impl_memmove);
+  Info.setLibcallImpl(RTLIB::MEMSET,  RTLIB::impl_memset);
+  Info.setLibcallImpl(RTLIB::MEMCMP,  RTLIB::impl_memcmp);
 }
 
 } // namespace llvm

@@ -272,6 +272,18 @@ bool LX32InstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
     MBB.erase(MI);
     return true;
 
+  case LX32::PseudoINDIRECTCALL:
+    // Expand to: JALR ra, 0(rs1)
+    //   X1 (ra, define)  — return address is stored in ra (X1).
+    //   rs1              — the function address from operand 0.
+    //   0                — no offset.
+    BuildMI(MBB, MI, DL, get(LX32::JALR))
+        .addReg(LX32::X1, RegState::Define)
+        .addReg(MI.getOperand(0).getReg())
+        .addImm(0);
+    MBB.erase(MI);
+    return true;
+
   case LX32::PseudoBR: {
     // Expand to: JAL x0, target
     //   x0 (define, dead) — result register; we discard the PC+4 return address
