@@ -47,6 +47,20 @@ def SDT_LX32Report : SDTypeProfile<0, 1, [SDTCisVT<0, i32>]>;
 def LX32report : SDNode<"LX32ISD::LX32_REPORT", SDT_LX32Report,
                         [SDNPHasChain, SDNPSideEffect, SDNPMayStore]>;
 
+// LX32select_cc — conditional select with explicit condition code.
+//
+// Produced by lowerSELECT / lowerSELECT_CC.
+// Operand order: (lhs, rhs, truev, falsev, cc_as_i32_imm).
+// The condition code is stored as an integer constant (ISD::CondCode enum).
+// PseudoSELECT_CC matches this and is expanded post-RA by
+// EmitInstrWithCustomInserter into a branch diamond.
+def SDT_LX32SelectCC : SDTypeProfile<1, 5, [
+    SDTCisSameAs<1, 2>,   // lhs and rhs have the same type (comparison operands)
+    SDTCisSameAs<0, 3>,   // result has the same type as truev
+    SDTCisSameAs<3, 4>,   // truev and falsev have the same type
+    SDTCisVT<5, i32>]>;   // cc is an i32 integer constant (ISD::CondCode enum)
+def LX32select_cc : SDNode<"LX32ISD::SELECT_CC", SDT_LX32SelectCC>;
+
 // LX32ret — custom DAG node for the LX32 return sequence.
 //
 // SDTypeProfile<0, 0, []> means zero results and zero fixed operands.
@@ -72,6 +86,18 @@ def lx32_lh  : PatFrag<(ops node:$ptr), (i32 (sextloadi16 node:$ptr))>;
 def lx32_lhu : PatFrag<(ops node:$ptr), (i32 (zextloadi16 node:$ptr))>;
 def lx32_lb  : PatFrag<(ops node:$ptr), (i32 (sextloadi8  node:$ptr))>;
 def lx32_lbu : PatFrag<(ops node:$ptr), (i32 (zextloadi8  node:$ptr))>;
+
+// AddrFI — ComplexPattern that matches an ISD::FrameIndex address node.
+//
+// When the instruction selector (top-down) processes a load/store before its
+// FrameIndex address operand, the address is still an unselected FrameIndex.
+// Using a ComplexPattern lets the pattern-matching logic call selectAddrFI(),
+// which converts ISD::FrameIndex → ISD::TargetFrameIndex at match time.
+//
+// The resulting TargetFrameIndex is stored as MO_FrameIndex in the emitted
+// machine instruction and resolved to (sp/fp + concrete_offset) by
+// LX32RegisterInfo::eliminateFrameIndex after the frame layout is finalised.
+def AddrFI : ComplexPattern<i32, 1, "selectAddrFI", [frameindex], []>;
 
 //===----------------------------------------------------------------------===//
 // Section 0.5 — Operand Transformers
@@ -334,8 +360,53 @@ def : Pat<(lx32_lhu GPR:$rs1), (LHU GPR:$rs1, 0)>;
 def : Pat<(lx32_lb GPR:$rs1), (LB GPR:$rs1, 0)>;
 def : Pat<(lx32_lbu GPR:$rs1), (LBU GPR:$rs1, 0)>;
 def : Pat<(store GPR:$rs2, GPR:$rs1), (SW GPR:$rs2, GPR:$rs1, 0)>;
-def : Pat<(truncstorei16 GPR:$rs2, GPR:$rs1), (SH GPR:$rs2, GPR:$rs1, 0)>; 
-def : Pat<(truncstorei8  GPR:$rs2, GPR:$rs1), (SB GPR:$rs2, GPR:$rs1, 0)>; 
+def : Pat<(truncstorei16 GPR:$rs2, GPR:$rs1), (SH GPR:$rs2, GPR:$rs1, 0)>;
+def : Pat<(truncstorei8  GPR:$rs2, GPR:$rs1), (SB GPR:$rs2, GPR:$rs1, 0)>;
+
+// EXTLOAD patterns — LLVM emits ISD::EXTLOAD when the sign vs. zero extension
+// of narrow memory does not matter (upper bits are unused).  Map to LBU/LHU
+// (zero-extension) since the upper bits are undefined in either case.
+def : Pat<(extloadi8  GPR:$rs1), (LBU GPR:$rs1, 0)>;
+def : Pat<(extloadi16 GPR:$rs1), (LHU GPR:$rs1, 0)>;
+def : Pat<(extloadi8  (add GPR:$rs1, imm12:$imm12)), (LBU GPR:$rs1, imm12:$imm12)>;
+def : Pat<(extloadi16 (add GPR:$rs1, imm12:$imm12)), (LHU GPR:$rs1, imm12:$imm12)>;
+
+// FrameIndex-addressed loads and stores.
+//
+// LLVM's instruction selector visits nodes top-down (root first).  When a
+// load/store addresses a stack slot (ISD::FrameIndex), the FrameIndex child
+// has not yet been selected when the parent load/store is visited.  Without
+// these patterns, SelectCode cannot match GPR:$rs1 against an unselected
+// FrameIndex node, causing a "Cannot select" fatal error.
+//
+// The AddrFI PatFrag (Section 0) matches ISD::FrameIndex nodes.  The
+// generated machine instruction carries a MO_FrameIndex operand which
+// LX32RegisterInfo::eliminateFrameIndex later resolves to (sp + offset).
+//
+// A standalone FrameIndex (address-of a stack variable, not embedded in a
+// load/store) is handled by the final pattern which materialises it via ADDI.
+def : Pat<(load AddrFI:$rs1), (LW AddrFI:$rs1, 0)>;
+def : Pat<(load (add AddrFI:$rs1, imm12:$imm12)), (LW AddrFI:$rs1, imm12:$imm12)>;
+def : Pat<(lx32_lh  AddrFI:$rs1), (LH  AddrFI:$rs1, 0)>;
+def : Pat<(lx32_lh  (add AddrFI:$rs1, imm12:$imm12)), (LH  AddrFI:$rs1, imm12:$imm12)>;
+def : Pat<(lx32_lhu AddrFI:$rs1), (LHU AddrFI:$rs1, 0)>;
+def : Pat<(lx32_lhu (add AddrFI:$rs1, imm12:$imm12)), (LHU AddrFI:$rs1, imm12:$imm12)>;
+def : Pat<(lx32_lb  AddrFI:$rs1), (LB  AddrFI:$rs1, 0)>;
+def : Pat<(lx32_lb  (add AddrFI:$rs1, imm12:$imm12)), (LB  AddrFI:$rs1, imm12:$imm12)>;
+def : Pat<(lx32_lbu AddrFI:$rs1), (LBU AddrFI:$rs1, 0)>;
+def : Pat<(lx32_lbu (add AddrFI:$rs1, imm12:$imm12)), (LBU AddrFI:$rs1, imm12:$imm12)>;
+def : Pat<(extloadi8  AddrFI:$rs1), (LBU AddrFI:$rs1, 0)>;
+def : Pat<(extloadi8  (add AddrFI:$rs1, imm12:$imm12)), (LBU AddrFI:$rs1, imm12:$imm12)>;
+def : Pat<(extloadi16 AddrFI:$rs1), (LHU AddrFI:$rs1, 0)>;
+def : Pat<(extloadi16 (add AddrFI:$rs1, imm12:$imm12)), (LHU AddrFI:$rs1, imm12:$imm12)>;
+def : Pat<(store GPR:$rs2, AddrFI:$rs1), (SW GPR:$rs2, AddrFI:$rs1, 0)>;
+def : Pat<(store GPR:$rs2, (add AddrFI:$rs1, imm12:$imm12)), (SW GPR:$rs2, AddrFI:$rs1, imm12:$imm12)>;
+def : Pat<(truncstorei16 GPR:$rs2, AddrFI:$rs1), (SH GPR:$rs2, AddrFI:$rs1, 0)>;
+def : Pat<(truncstorei8  GPR:$rs2, AddrFI:$rs1), (SB GPR:$rs2, AddrFI:$rs1, 0)>;
+
+// Standalone FrameIndex: materialise the stack-slot address into a register.
+// Emits ADDI rd, FrameIndex, 0; eliminateFrameIndex converts to ADDI rd, sp, offset.
+def : Pat<(i32 AddrFI:$fi), (ADDI AddrFI:$fi, 0)>;
 
 //===----------------------------------------------------------------------===//
 // Section 7 — Branch Instructions (B-type)
@@ -519,12 +590,58 @@ let isPseudo = 1, hasSideEffects = 0, mayLoad = 0, mayStore = 0 in {
     let hasSideEffects = 1;
   }
 
+  // PseudoINDIRECTCALL — indirect call through a function-pointer register.
+  //   Expanded by expandPostRAPseudo to: JALR X1, 0(rs1)
+  //   Used when the call target is not a compile-time-known symbol (e.g. Rust
+  //   trait object dispatch, function pointers, or runtime-computed addresses).
+  def PseudoINDIRECTCALL : LX32Pseudo<(outs), (ins GPR:$rs1),
+                                        "# PseudoINDIRECTCALL $rs1", []> {
+    let isCall         = 1;
+    let Uses           = [X10, X11, X12, X13, X14, X15, X16, X17];
+    let Defs           = [X1, X5, X6, X7,
+                          X10, X11, X12, X13, X14, X15, X16, X17,
+                          X28, X29, X30, X31];
+    let hasSideEffects = 1;
+  }
+
   def PseudoLA  : LX32Pseudo<(outs GPR:$rd), (ins bare_symbol:$addr),
                               "la\t$rd, $addr", []>;
 
   def PseudoNOP : LX32Pseudo<(outs), (ins), "nop", []>;
 
+  // PseudoSELECT_CC — conditional select, expanded post-RA into a branch diamond.
+  //
+  // Operands: lhs, rhs, cc_as_imm, trueval, falseval → dst
+  // The condition code is stored as an integer immediate (ISD::CondCode enum value).
+  // EmitInstrWithCustomInserter in LX32ISelLowering.cpp expands this pseudo.
+  let usesCustomInserter = 1 in
+  def PseudoSELECT_CC : LX32Pseudo<(outs GPR:$dst),
+                                    (ins GPR:$lhs, GPR:$rhs, i32imm:$cc,
+                                         GPR:$truev, GPR:$falsev),
+                                    "pseudoselect_cc", []>;
+
 } // isPseudo = 1
+
+// Match LX32ISD::SELECT_CC to PseudoSELECT_CC.
+// The condition code is an i32 integer constant (ISD::CondCode enum value).
+def : Pat<(LX32select_cc (i32 GPR:$lhs), (i32 GPR:$rhs),
+                          (i32 GPR:$truev), (i32 GPR:$falsev), (i32 imm:$cc)),
+          (PseudoSELECT_CC GPR:$lhs, GPR:$rhs, imm:$cc,
+                            GPR:$truev, GPR:$falsev)>;
+
+// SETCC patterns for conditions not directly handled by SLT/SLTU.
+// These use XOR/XORI/SLTIU idioms identical to RISC-V.
+def : Pat<(setne  GPR:$rs1, GPR:$rs2), (SLTU  X0,           (XOR  GPR:$rs1, GPR:$rs2))>;
+def : Pat<(seteq  GPR:$rs1, GPR:$rs2), (SLTIU (XOR  GPR:$rs1, GPR:$rs2), 1)>;
+def : Pat<(setgt  GPR:$rs1, GPR:$rs2), (SLT   GPR:$rs2,     GPR:$rs1)>;
+def : Pat<(setugt GPR:$rs1, GPR:$rs2), (SLTU  GPR:$rs2,     GPR:$rs1)>;
+def : Pat<(setge  GPR:$rs1, GPR:$rs2), (XORI  (SLT  GPR:$rs1, GPR:$rs2), 1)>;
+def : Pat<(setle  GPR:$rs1, GPR:$rs2), (XORI  (SLT  GPR:$rs2, GPR:$rs1), 1)>;
+def : Pat<(setuge GPR:$rs1, GPR:$rs2), (XORI  (SLTU GPR:$rs1, GPR:$rs2), 1)>;
+def : Pat<(setule GPR:$rs1, GPR:$rs2), (XORI  (SLTU GPR:$rs2, GPR:$rs1), 1)>;
+// Zero-comparison shortcuts (common for booleans and null checks).
+def : Pat<(setne  GPR:$rs1, 0), (SLTU  X0, GPR:$rs1)>;
+def : Pat<(seteq  GPR:$rs1, 0), (SLTIU GPR:$rs1, 1)>;
 
 //===----------------------------------------------------------------------===//
 // Section 12 — Codegen-Only Pseudo Overrides

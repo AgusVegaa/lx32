@@ -280,7 +280,27 @@ private:
   // a BR_CC form handled by lowerBR_CC.
   SDValue lowerBRCOND(SDValue Op, SelectionDAG &DAG) const;
 
+  // lowerSELECT_CC — lower ISD::SELECT_CC to LX32ISD::SELECT_CC.
+  //
+  // ISD::SELECT_CC(lhs, rhs, truev, falsev, cc) is lowered directly to the
+  // equivalent LX32ISD::SELECT_CC node which PseudoSELECT_CC in TableGen
+  // matches.  EmitInstrWithCustomInserter then expands it to a branch diamond.
+  SDValue lowerSELECT_CC(SDValue Op, SelectionDAG &DAG) const;
+
   SDValue lowerINTRINSIC(SDValue Op, SelectionDAG &DAG) const;
+
+  // EmitInstrWithCustomInserter — expand PseudoSELECT_CC into a branch diamond.
+  //
+  // Called after register allocation to expand the usesCustomInserter pseudo:
+  //   PseudoSELECT_CC lhs, rhs, cc, truev, falsev → dst
+  // into:
+  //   BB:     bcc lhs, rhs, .true_bb
+  //   .false_bb: ...
+  //   .true_bb:  ...
+  //   .merge_bb: dst = phi [truev, .true_bb], [falsev, .false_bb]
+  MachineBasicBlock *
+  EmitInstrWithCustomInserter(MachineInstr &MI,
+                              MachineBasicBlock *BB) const override;
 };
 
 } // namespace llvm
