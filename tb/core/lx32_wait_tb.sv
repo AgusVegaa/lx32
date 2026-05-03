@@ -91,4 +91,3 @@ module lx32_wait_tb;
   end
 
 endmodule
-

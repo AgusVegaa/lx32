@@ -22,9 +22,8 @@
 // ───────────────────
 // LX.WAIT is encoded as a standard I-type with NO write-back.
 //
-// ENCODING NOTE: The LX32 compiler places the cycle-count register at
-// bits[11:7] (the rd field), not bits[19:15] (rs1 as per the ISA spec).
-// Both this model and the RTL read from bits[11:7] to match the compiler.
+// ENCODING NOTE: LX.WAIT follows the ISA encoding: cycle-count is read from rs1
+// (bits[19:15]).
 //
 // State machine (wait_counter):
 //   0          → idle; normal decode path.
@@ -33,9 +32,7 @@
 //   reaches 0  → final stall cycle: PC advances past LX.WAIT.
 //
 // Observed latency for `lx.wait N` (N > 0):
-//   1 committed cycle (wait_start fires) + N+1 stall cycles = N+2 clock cycles.
-//   The extra stall arises because the IPC tracker reads PC before the tick that
-//   advances it, so the expiry cycle where wait_counter → 0 appears as a stall.
+//   1 issue cycle + N stall cycles = N+1 clock cycles before the next instruction.
 // For N = 0, LX.WAIT is a NOP (wait_counter stays 0; PC advances in 1 cycle).
 // ============================================================
 
@@ -155,14 +152,10 @@ impl Lx32System {
         let rs2_data = self.reg_file.read_rs2(rs2_addr);
 
         // ── 5. LX.WAIT — handle before the normal execute path ────────────────
-        // ENCODING NOTE: The LX32 compiler encodes `lx.wait <reg>` with the
-        // source register at bits[11:7] (the rd field), NOT at bits[19:15] (rs1).
-        // rs1 is always x0 in the emitted binaries.  The RTL and this model both
-        // read the cycle count from rd_addr / rd_field to match the compiler.
+        // LX.WAIT reads the cycle count from rs1 as defined by the ISA.
         let is_wait = ctrl.custom_1 && funct3 == 0b000;
         if is_wait {
-            // rd_addr = instr[11:7] — the register containing the cycle count.
-            let stall_cycles = self.reg_file.read_rs1(rd_addr); // rd field, not rs1
+            let stall_cycles = rs1_data;
             self.reg_file.tick(false, 0, 0, false); // no write-back
             if stall_cycles > 0 {
                 self.wait_counter = stall_cycles;

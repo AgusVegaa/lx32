@@ -106,9 +106,8 @@ module lx32_system (
       wait_counter <= 32'h0;
       wait_consumed <= 1'b0;
     end else if (wait_start) begin
-      // Read cycle count from bits[11:7] (rd field): the LX32 compiler encodes
-      // lx.wait with the source register at rd, not rs1.
-      wait_counter <= wait_src_data;
+      // LX.WAIT uses rs1 as the cycle-count source register.
+      wait_counter <= rs1_data;
       wait_consumed <= 1'b1;
     end else if (wait_active) begin
       wait_counter <= wait_counter - 32'd1;
@@ -181,11 +180,6 @@ module lx32_system (
   // ------------------------------------------------------------
   // Register File (RF)
   // ------------------------------------------------------------
-  // wait_src_data: the register at instr[11:7] (rd field).
-  // The LX32 compiler encodes lx.wait as: rd = cycle_count_reg, rs1 = x0.
-  // The RTL reads the cycle count from this port instead of rs1_data.
-  logic [31:0] wait_src_data;
-
   register_file rf (
     .clk        (clk),
     .rst        (rst),
@@ -195,8 +189,7 @@ module lx32_system (
     .data_rd    (rd_data),
     .we         (reg_write),
     .data_rs1   (rs1_data),
-    .data_rs2   (rs2_data),
-    .data_rd_src(wait_src_data)
+    .data_rs2   (rs2_data)
   );
 
   // ------------------------------------------------------------

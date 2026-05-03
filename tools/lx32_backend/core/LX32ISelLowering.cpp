@@ -445,6 +445,49 @@ SDValue LX32TargetLowering::LowerCall(
   SDValue Chain = CLI.Chain;
   SDValue Glue;
 
+  // Lower `call @llvm.lx32.*` shim symbols to native custom instructions.
+  //
+  // This keeps the C-side intrinsic wrappers usable even when the frontend
+  // builtin hooks are unavailable (the baremetal flow emits i386 IR fallback).
+  // The wrappers still call the reserved llvm.* symbol names, and we map those
+  // calls directly to LX32ISD custom nodes here.
+  StringRef Sym;
+  if (const auto *ES = dyn_cast<ExternalSymbolSDNode>(CLI.Callee)) {
+    Sym = ES->getSymbol();
+  } else if (const auto *GA = dyn_cast<GlobalAddressSDNode>(CLI.Callee)) {
+    Sym = GA->getGlobal()->getName();
+  }
+
+  if (!Sym.empty()) {
+
+    auto getSingleArgOrDie = [&]() -> SDValue {
+      if (CLI.OutVals.size() != 1)
+        report_fatal_error("lx32: custom llvm.* call expects exactly one argument");
+      return CLI.OutVals[0];
+    };
+
+    if (Sym == "llvm.lx32.sensor" || Sym == "llvm.lx32.matrix" ||
+        Sym == "llvm.lx32.delta"  || Sym == "llvm.lx32.chord") {
+      unsigned Opc = 0;
+      if (Sym == "llvm.lx32.sensor") Opc = LX32ISD::LX32_SENSOR;
+      else if (Sym == "llvm.lx32.matrix") Opc = LX32ISD::LX32_MATRIX;
+      else if (Sym == "llvm.lx32.delta")  Opc = LX32ISD::LX32_DELTA;
+      else                                 Opc = LX32ISD::LX32_CHORD;
+
+      SDValue Res = DAG.getNode(Opc, DL, MVT::i32, getSingleArgOrDie());
+      if (!CLI.Ins.empty())
+        InVals.push_back(Res);
+      return Chain;
+    }
+
+    if (Sym == "llvm.lx32.wait" || Sym == "llvm.lx32.report") {
+      unsigned Opc = (Sym == "llvm.lx32.wait")
+          ? LX32ISD::LX32_WAIT
+          : LX32ISD::LX32_REPORT;
+      return DAG.getNode(Opc, DL, MVT::Other, Chain, getSingleArgOrDie());
+    }
+  }
+
   SmallVector<CCValAssign, 16> ArgLocs;
   CCState CCInfo(CLI.CallConv, CLI.IsVarArg, MF, ArgLocs, *DAG.getContext());
   CCInfo.AnalyzeCallOperands(CLI.Outs, CC_LX32);

@@ -16,11 +16,11 @@ define dso_local void @test_complex_scan() #0 {
   %9 = alloca i32, align 4
   store i32 0, ptr %5, align 4
   %10 = load i32, ptr %5, align 4
-  %11 = call ptr @llvm.lx32.matrix(i32 %10)
+  %11 = call ptr @llvm.lx32.matrix(i32 noundef %10) #2
   store ptr %11, ptr %6, align 4
   store i32 5, ptr %4, align 4
   %12 = load i32, ptr %4, align 4
-  %13 = call i32 @llvm.lx32.chord(i32 %12)
+  %13 = call i32 @llvm.lx32.chord(i32 noundef %12) #2
   store i32 %13, ptr %7, align 4
   %14 = load i32, ptr %7, align 4
   store i32 0, ptr %8, align 4
@@ -35,7 +35,7 @@ define dso_local void @test_complex_scan() #0 {
   %19 = load i32, ptr %8, align 4
   store i32 %19, ptr %3, align 4
   %20 = load i32, ptr %3, align 4
-  %21 = call i32 @llvm.lx32.delta(i32 %20)
+  %21 = call i32 @llvm.lx32.delta(i32 noundef %20) #2
   store i32 %21, ptr %9, align 4
   %22 = load ptr, ptr %6, align 4
   %23 = load i32, ptr %8, align 4
@@ -53,7 +53,7 @@ define dso_local void @test_complex_scan() #0 {
 31:                                               ; preds = %28, %18
   store i32 2, ptr %2, align 4
   %32 = load i32, ptr %2, align 4
-  call void @llvm.lx32.wait(i32 %32)
+  call void @llvm.lx32.wait(i32 noundef %32) #2
   br label %33
 
 33:                                               ; preds = %31, %28
@@ -69,7 +69,7 @@ define dso_local void @test_complex_scan() #0 {
   %38 = load ptr, ptr %6, align 4
   store ptr %38, ptr %1, align 4
   %39 = load ptr, ptr %1, align 4
-  call void @llvm.lx32.report(ptr %39)
+  call void @llvm.lx32.report(ptr noundef %39) #2
   ret void
 }
 
@@ -79,24 +79,24 @@ define dso_local i32 @main() #0 {
   ret i32 0
 }
 
-; Function Attrs: nounwind memory(none)
-declare ptr @llvm.lx32.matrix(i32) #1
+; Unknown intrinsic
+declare dso_local ptr @llvm.lx32.matrix(i32 noundef) #1
 
-; Function Attrs: nounwind memory(none)
-declare i32 @llvm.lx32.chord(i32) #1
+; Unknown intrinsic
+declare dso_local i32 @llvm.lx32.chord(i32 noundef) #1
 
-; Function Attrs: nounwind memory(none)
-declare i32 @llvm.lx32.delta(i32) #1
+; Unknown intrinsic
+declare dso_local i32 @llvm.lx32.delta(i32 noundef) #1
 
-; Function Attrs: nounwind
-declare void @llvm.lx32.wait(i32) #2
+; Unknown intrinsic
+declare dso_local void @llvm.lx32.wait(i32 noundef) #1
 
-; Function Attrs: nounwind
-declare void @llvm.lx32.report(ptr) #2
+; Unknown intrinsic
+declare dso_local void @llvm.lx32.report(ptr noundef) #1
 
 attributes #0 = { noinline nounwind optnone "frame-pointer"="all" "min-legal-vector-width"="0" "no-builtins" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="generic" "target-features"="" "tune-cpu"="generic" }
-attributes #1 = { nounwind memory(none) }
-attributes #2 = { nounwind }
+attributes #1 = { "frame-pointer"="all" "no-builtins" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="generic" "target-features"="" "tune-cpu"="generic" }
+attributes #2 = { nobuiltin nounwind "no-builtins" }
 attributes #3 = { nobuiltin "no-builtins" }
 
 !llvm.module.flags = !{!0, !1}

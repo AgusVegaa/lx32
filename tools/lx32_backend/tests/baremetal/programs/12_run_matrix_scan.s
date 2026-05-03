@@ -4,13 +4,17 @@
 	.type	main,@function
 main:                                   # @main
 # %bb.0:
-	addi	x2, x2, -16
-	lx.matrix	x10, x0
-	sw	x10, 12(x2)
-	addi	x10, x0, 5
-	lx.chord	x10, x10
-	sw	x10, 8(x2)
+	addi	x2, x2, -36
 	addi	x10, x0, 0
+	sw	x10, 16(x2)
+	lw	x11, 16(x2)
+	lx.matrix	x11, x11
+	sw	x11, 12(x2)
+	addi	x11, x0, 5
+	sw	x11, 20(x2)
+	lw	x11, 20(x2)
+	lx.chord	x11, x11
+	sw	x11, 8(x2)
 	sw	x10, 4(x2)
 	jal	x0, <MCOperand Expr:.LBB0_1>
 .LBB0_1:                                # =>This Inner Loop Header: Depth=1
@@ -20,6 +24,8 @@ main:                                   # @main
 	jal	x0, <MCOperand Expr:.LBB0_2>
 .LBB0_2:                                #   in Loop: Header=BB0_1 Depth=1
 	lw	x10, 4(x2)
+	sw	x10, 24(x2)
+	lw	x10, 24(x2)
 	lx.delta	x10, x10
 	sw	x10, 0(x2)
 	lw	x10, 12(x2)
@@ -37,6 +43,8 @@ main:                                   # @main
 	jal	x0, <MCOperand Expr:.LBB0_4>
 .LBB0_4:                                #   in Loop: Header=BB0_1 Depth=1
 	addi	x10, x0, 2
+	sw	x10, 28(x2)
+	lw	x10, 28(x2)
 	lx.wait	x10
 	jal	x0, <MCOperand Expr:.LBB0_5>
 .LBB0_5:                                #   in Loop: Header=BB0_1 Depth=1
@@ -48,9 +56,11 @@ main:                                   # @main
 	jal	x0, <MCOperand Expr:.LBB0_1>
 .LBB0_7:
 	lw	x10, 12(x2)
+	sw	x10, 32(x2)
+	lw	x10, 32(x2)
 	lx.report	x10
 	addi	x10, x0, 0
-	addi	x2, x2, 16
+	addi	x2, x2, 36
 	jalr	x0, 0(x1)
 .Lfunc_end0:
 	.size	main, .Lfunc_end0-main

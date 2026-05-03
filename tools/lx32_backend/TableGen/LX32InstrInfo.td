@@ -829,19 +829,15 @@ let hasSideEffects = 1, mayLoad = 0 in {
 
   // LX.WAIT rs1
   //   Freeze the program counter for the number of cycles contained in rs1.
-  //   Total stall latency: 1 (decode) + N (countdown) + 1 (expiry) = N+2 clock
-  //   cycles for `lx.wait N`.
+  //   Total latency impact is 1 issue cycle + N stall cycles = N+1 clocks
+  //   before the next instruction executes.
   //
-  //   ENCODING NOTE: Due to a known quirk in the LX32 TableGen/assembler, the
-  //   compiler places the source register at bits[11:7] (rd field) rather than
-  //   bits[19:15] (rs1 field).  The RTL and the software simulator both read
-  //   the wait count from bits[11:7] to match the actual compiled binaries.
-  //   The `let rd = 0` below is the spec intent; the assembler does not honour it.
+  //   ENCODING NOTE: rs1 (bits[19:15]) carries the cycle count; rd is reserved.
   let mayStore = 0 in
   def LX_WAIT   : LXInstI<0b000, OPC_CUSTOM_1,
                            (outs), (ins GPR:$rs1),
                            "lx.wait", "$rs1"> {
-    let rd    = 0; // spec: reserved; assembler puts source register here instead
+    let rd    = 0; // reserved; must be zero
     let imm12 = 0; // reserved; must be zero
   }
 

@@ -9,73 +9,88 @@ define dso_local i32 @main() #0 {
   %2 = alloca i32, align 4
   %3 = alloca i32, align 4
   %4 = alloca i32, align 4
-  %5 = call ptr @llvm.lx32.matrix(i32 0)
-  store ptr %5, ptr %1, align 4
-  %6 = call i32 @llvm.lx32.chord(i32 5)
-  store i32 %6, ptr %2, align 4
-  %7 = load i32, ptr %2, align 4
-  store i32 0, ptr %3, align 4
-  br label %8
+  %5 = alloca i32, align 4
+  %6 = alloca ptr, align 4
+  %7 = alloca i32, align 4
+  %8 = alloca i32, align 4
+  %9 = alloca i32, align 4
+  store i32 0, ptr %5, align 4
+  %10 = load i32, ptr %5, align 4
+  %11 = call ptr @llvm.lx32.matrix(i32 noundef %10) #2
+  store ptr %11, ptr %6, align 4
+  store i32 5, ptr %4, align 4
+  %12 = load i32, ptr %4, align 4
+  %13 = call i32 @llvm.lx32.chord(i32 noundef %12) #2
+  store i32 %13, ptr %7, align 4
+  %14 = load i32, ptr %7, align 4
+  store i32 0, ptr %8, align 4
+  br label %15
 
-8:                                                ; preds = %25, %0
-  %9 = load i32, ptr %3, align 4
-  %10 = icmp slt i32 %9, 64
-  br i1 %10, label %11, label %28
+15:                                               ; preds = %34, %0
+  %16 = load i32, ptr %8, align 4
+  %17 = icmp slt i32 %16, 64
+  br i1 %17, label %18, label %37
 
-11:                                               ; preds = %8
-  %12 = load i32, ptr %3, align 4
-  %13 = call i32 @llvm.lx32.delta(i32 %12)
-  store i32 %13, ptr %4, align 4
-  %14 = load ptr, ptr %1, align 4
-  %15 = load i32, ptr %3, align 4
-  %16 = getelementptr inbounds i16, ptr %14, i32 %15
-  %17 = load i16, ptr %16, align 2
-  %18 = zext i16 %17 to i32
-  %19 = icmp sgt i32 %18, 2000
-  br i1 %19, label %23, label %20
+18:                                               ; preds = %15
+  %19 = load i32, ptr %8, align 4
+  store i32 %19, ptr %3, align 4
+  %20 = load i32, ptr %3, align 4
+  %21 = call i32 @llvm.lx32.delta(i32 noundef %20) #2
+  store i32 %21, ptr %9, align 4
+  %22 = load ptr, ptr %6, align 4
+  %23 = load i32, ptr %8, align 4
+  %24 = getelementptr inbounds i16, ptr %22, i32 %23
+  %25 = load i16, ptr %24, align 2
+  %26 = zext i16 %25 to i32
+  %27 = icmp sgt i32 %26, 2000
+  br i1 %27, label %31, label %28
 
-20:                                               ; preds = %11
-  %21 = load i32, ptr %4, align 4
-  %22 = icmp sgt i32 %21, 100
-  br i1 %22, label %23, label %24
+28:                                               ; preds = %18
+  %29 = load i32, ptr %9, align 4
+  %30 = icmp sgt i32 %29, 100
+  br i1 %30, label %31, label %33
 
-23:                                               ; preds = %20, %11
-  call void @llvm.lx32.wait(i32 2)
-  br label %24
+31:                                               ; preds = %28, %18
+  store i32 2, ptr %2, align 4
+  %32 = load i32, ptr %2, align 4
+  call void @llvm.lx32.wait(i32 noundef %32) #2
+  br label %33
 
-24:                                               ; preds = %23, %20
-  br label %25
+33:                                               ; preds = %31, %28
+  br label %34
 
-25:                                               ; preds = %24
-  %26 = load i32, ptr %3, align 4
-  %27 = add nsw i32 %26, 1
-  store i32 %27, ptr %3, align 4
-  br label %8, !llvm.loop !3
+34:                                               ; preds = %33
+  %35 = load i32, ptr %8, align 4
+  %36 = add nsw i32 %35, 1
+  store i32 %36, ptr %8, align 4
+  br label %15, !llvm.loop !3
 
-28:                                               ; preds = %8
-  %29 = load ptr, ptr %1, align 4
-  call void @llvm.lx32.report(ptr %29)
+37:                                               ; preds = %15
+  %38 = load ptr, ptr %6, align 4
+  store ptr %38, ptr %1, align 4
+  %39 = load ptr, ptr %1, align 4
+  call void @llvm.lx32.report(ptr noundef %39) #2
   ret i32 0
 }
 
-; Function Attrs: nounwind memory(none)
-declare ptr @llvm.lx32.matrix(i32) #1
+; Unknown intrinsic
+declare dso_local ptr @llvm.lx32.matrix(i32 noundef) #1
 
-; Function Attrs: nounwind memory(none)
-declare i32 @llvm.lx32.chord(i32) #1
+; Unknown intrinsic
+declare dso_local i32 @llvm.lx32.chord(i32 noundef) #1
 
-; Function Attrs: nounwind memory(none)
-declare i32 @llvm.lx32.delta(i32) #1
+; Unknown intrinsic
+declare dso_local i32 @llvm.lx32.delta(i32 noundef) #1
 
-; Function Attrs: nounwind
-declare void @llvm.lx32.wait(i32) #2
+; Unknown intrinsic
+declare dso_local void @llvm.lx32.wait(i32 noundef) #1
 
-; Function Attrs: nounwind
-declare void @llvm.lx32.report(ptr) #2
+; Unknown intrinsic
+declare dso_local void @llvm.lx32.report(ptr noundef) #1
 
 attributes #0 = { noinline nounwind optnone "frame-pointer"="all" "min-legal-vector-width"="0" "no-builtins" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="generic" "target-features"="" "tune-cpu"="generic" }
-attributes #1 = { nounwind memory(none) }
-attributes #2 = { nounwind }
+attributes #1 = { "frame-pointer"="all" "no-builtins" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="generic" "target-features"="" "tune-cpu"="generic" }
+attributes #2 = { nobuiltin nounwind "no-builtins" }
 
 !llvm.module.flags = !{!0, !1}
 !llvm.ident = !{!2}
