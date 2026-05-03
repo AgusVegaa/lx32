@@ -7,7 +7,7 @@ edition = "2024"
 warnings = "allow"
 
 [dependencies]
-rand = "0.10.0"
+rand = "0.10.1"
 clap = { version = "4.5", features = ["derive"] }
 
 [build-dependencies]
