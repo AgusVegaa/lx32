@@ -125,10 +125,6 @@ fn main() {
     let mut stall_cycles: u64 = 0;             // cycles where PC held (LX.WAIT)
     let mut mix = InstrMix::default();
 
-    // Previous PC: used to detect PC advancement vs. stall.
-    // Initialised to None so the very first cycle is always counted as committed.
-    let mut prev_pc: Option<u32> = None;
-
     let mut exit_cond = ExitCondition::MaxCycles;
 
     'sim: loop {
@@ -200,9 +196,11 @@ fn main() {
         unsafe { tick_core(core, 0, instr, mem_rdata) };
 
         // ── IPC accounting ─────────────────────────────────────────────────
-        // A cycle is "committed" when the PC advances.  Stall cycles (from
-        // LX.WAIT) hold the PC constant and do not retire an instruction.
-        let pc_advanced = prev_pc.map_or(true, |p| p != pc);
+        // Count this cycle as committed only when the PC changed across the
+        // active clock edge.  This avoids over-counting stall cycles where
+        // the same instruction word is re-fetched while LX.WAIT is active.
+        let pc_after = unsafe { get_pc(core) };
+        let pc_advanced = pc_after != pc;
         if pc_advanced {
             instructions_committed += 1;
             mix.record(instr);
@@ -215,7 +213,6 @@ fn main() {
             println!("Cycle {:05}: PC=0x{:08X}  instr=0x{:08X}{}", cycles, pc, instr, stall_tag);
         }
 
-        prev_pc = Some(pc);
         cycles += 1;
 
         if cycles >= args.max_cycles {

@@ -93,6 +93,7 @@ COMMON_CFLAGS=(
   -fno-builtin
   -nostdlib
   -fno-stack-protector
+  -DLX32_FORCE_LLVM_INTRINSICS=1
   "-O${LX32_C_OLEVEL}"
   -S
   -emit-llvm
@@ -171,5 +172,4 @@ echo "  c_target_for_ir : $C_TARGET"
 echo "  ir    : $OUT_LL"
 echo "  asm   : $OUT_S"
 echo "  obj   : $OUT_O ($OBJ_STATUS)"
-
 

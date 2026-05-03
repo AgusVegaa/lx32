@@ -38,6 +38,15 @@ extern "C" {
 #define __has_builtin(x) 0
 #endif
 
+#if defined(LX32_FORCE_LLVM_INTRINSICS)
+extern int32_t   __lx32_llvm_sensor(uint32_t idx)           __asm__("llvm.lx32.sensor");
+extern uint16_t *__lx32_llvm_matrix(uint32_t col)           __asm__("llvm.lx32.matrix");
+extern int32_t   __lx32_llvm_delta(uint32_t key_idx)        __asm__("llvm.lx32.delta");
+extern uint32_t  __lx32_llvm_chord(uint32_t bitmask)        __asm__("llvm.lx32.chord");
+extern void      __lx32_llvm_wait(uint32_t cycles)          __asm__("llvm.lx32.wait");
+extern void      __lx32_llvm_report(const void *report_ptr) __asm__("llvm.lx32.report");
+#endif
+
 /*
  * Force inlining at every optimization level, including -O0.
  *
@@ -65,6 +74,8 @@ LX_ALWAYS_INLINE int32_t lx_sensor(uint32_t idx)
 {
 #if __has_builtin(__builtin_lx_sensor)
     return __builtin_lx_sensor(idx);
+#elif defined(LX32_FORCE_LLVM_INTRINSICS)
+    return __lx32_llvm_sensor(idx);
 #else
     return (int32_t)(1000u + (idx & 0x3Fu));
 #endif
@@ -88,6 +99,8 @@ LX_ALWAYS_INLINE uint16_t *lx_matrix(uint32_t col)
 {
 #if __has_builtin(__builtin_lx_matrix)
     return __builtin_lx_matrix(col);
+#elif defined(LX32_FORCE_LLVM_INTRINSICS)
+    return __lx32_llvm_matrix(col);
 #else
     static uint16_t fallback_matrix[64];
     (void)col;
@@ -110,6 +123,8 @@ LX_ALWAYS_INLINE int32_t lx_delta(uint32_t key_idx)
 {
 #if __has_builtin(__builtin_lx_delta)
     return __builtin_lx_delta(key_idx);
+#elif defined(LX32_FORCE_LLVM_INTRINSICS)
+    return __lx32_llvm_delta(key_idx);
 #else
     return (int32_t)((key_idx & 0x3Fu) << 1);
 #endif
@@ -130,6 +145,8 @@ LX_ALWAYS_INLINE uint32_t lx_chord(uint32_t bitmask)
 {
 #if __has_builtin(__builtin_lx_chord)
     return __builtin_lx_chord(bitmask);
+#elif defined(LX32_FORCE_LLVM_INTRINSICS)
+    return __lx32_llvm_chord(bitmask);
 #else
     return bitmask ? 1u : 0u;
 #endif
@@ -150,6 +167,8 @@ LX_ALWAYS_INLINE void lx_wait(uint32_t cycles)
 {
 #if __has_builtin(__builtin_lx_wait)
     __builtin_lx_wait(cycles);
+#elif defined(LX32_FORCE_LLVM_INTRINSICS)
+    __lx32_llvm_wait(cycles);
 #else
     for (volatile uint32_t i = 0; i < cycles; ++i) {
     }
@@ -170,6 +189,8 @@ LX_ALWAYS_INLINE void lx_report(const void *report_ptr)
 {
 #if __has_builtin(__builtin_lx_report)
     __builtin_lx_report(report_ptr);
+#elif defined(LX32_FORCE_LLVM_INTRINSICS)
+    __lx32_llvm_report(report_ptr);
 #else
     (void)report_ptr;
 #endif
