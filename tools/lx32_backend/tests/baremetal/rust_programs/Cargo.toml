@@ -1,0 +1,53 @@
+[package]
+name        = "lx32-rust-firmware-tests"
+version     = "0.1.0"
+edition     = "2021"
+description = "Bare-metal Rust firmware tests for the LX32K keyboard processor"
+publish     = false
+
+[[bin]]
+name = "01_return42"
+path = "src/bin/01_return42.rs"
+
+[[bin]]
+name = "02_pointer_store"
+path = "src/bin/02_pointer_store.rs"
+
+[[bin]]
+name = "03_call_chain"
+path = "src/bin/03_call_chain.rs"
+
+[[bin]]
+name = "04_branch_loop"
+path = "src/bin/04_branch_loop.rs"
+
+[[bin]]
+name = "05_compare_assign"
+path = "src/bin/05_compare_assign.rs"
+
+[[bin]]
+name = "06_pointer_walk"
+path = "src/bin/06_pointer_walk.rs"
+
+[[bin]]
+name = "07_fibonacci_iter"
+path = "src/bin/07_fibonacci_iter.rs"
+
+[[bin]]
+name = "08_fibonacci_recursive"
+path = "src/bin/08_fibonacci_recursive.rs"
+
+[[bin]]
+name = "09_custom_intrinsics"
+path = "src/bin/09_custom_intrinsics.rs"
+
+[profile.release]
+opt-level     = "z"
+lto           = true
+panic         = "abort"
+codegen-units = 1
+strip         = "debuginfo"
+
+[profile.dev]
+panic     = "abort"
+opt-level = 1

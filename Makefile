@@ -222,7 +222,18 @@ NPROC        := $(shell nproc 2>/dev/null || sysctl -n hw.logicalcpu)
 LLD_EXISTS   := $(shell which lld 2>/dev/null)
 LLVM_BRANCH ?= main
 
-.PHONY: check-llvm install-backend build-backend setup-backend test-baremetal test-baremetal-deep compile-c run-binary bench-all bench-compile-tests bench-build-runner bench-run bench-summary
+# ── Rust toolchain variables ────────────────────────────────────────────────
+RUST_LX32_REPO := https://github.com/Axel84727/rust-lx32.git
+RUST_LX32_DIR  := $(CURDIR)/.rust/rust-lx32
+RUST_HOST      := $(shell rustc -vV 2>/dev/null | sed -n 's/^host: //p')
+ifeq ($(RUST_HOST),)
+RUST_HOST      := aarch64-apple-darwin
+endif
+RUST_LX32_RUSTC := $(RUST_LX32_DIR)/build/$(RUST_HOST)/stage1/bin/rustc
+PAC_DIR        := $(CURDIR)/tools/pulsar_pac
+RUST_PROGS_DIR := $(CURDIR)/tools/lx32_backend/tests/baremetal/rust_programs
+
+.PHONY: check-llvm install-backend build-backend setup-backend test-baremetal test-baremetal-deep compile-c run-binary bench-all bench-compile-tests bench-build-runner bench-run bench-summary check-rust build-rust-compiler build-rust-sysroot setup-rust build-firmware check-pac build-rust-firmware-tests test-rust-firmware
 
 check-llvm: ## Check LLVM, clone if missing
 	@if [ -d "$(LLVM_DIR)/.git" ]; then \
@@ -258,8 +269,93 @@ build-backend: install-backend ## Build LLVM with LX32 + native backend
 	@ninja -C $(LLVM_DIR)/build -j$(NPROC)
 	@echo "✓ Backend built"
 
-setup-backend: build-backend ## Full setup: clone, link, build
+setup-backend: build-backend check-rust ## Full setup: clone LLVM + build backend; also ensure Rust fork is cloned
 	@echo "✓ LX32 backend ready"
+	@echo "  Run 'make setup-rust' to build the LX32 Rust compiler (~20–40 min)"
+
+# ======================
+# Rust Firmware Development
+# ======================
+
+check-rust: ## Check if rust-lx32 fork is cloned; clone if missing
+	@if [ -d "$(RUST_LX32_DIR)/.git" ]; then \
+		echo "✓ rust-lx32 found at $(RUST_LX32_DIR)"; \
+	else \
+		echo "→ Cloning rust-lx32 fork..."; \
+		git clone --depth=1 $(RUST_LX32_REPO) $(RUST_LX32_DIR); \
+		echo "✓ rust-lx32 cloned"; \
+	fi
+
+build-rust-compiler: check-rust ## Build the custom stage1 rustc for LX32 (~20-40 min first time)
+	@if [ -f "$(RUST_LX32_RUSTC)" ]; then \
+		echo "✓ Custom rustc already built: $(RUST_LX32_RUSTC)"; \
+	else \
+		echo "→ Building stage1 rustc — this takes 20–40 minutes..."; \
+		cd "$(RUST_LX32_DIR)" && python3 x.py build compiler --stage 1; \
+		echo "✓ Custom rustc built"; \
+	fi
+
+build-rust-sysroot: build-rust-compiler ## Build libcore for lx32-unknown-none-elf target
+	@if [ -d "$(RUST_LX32_DIR)/build/$(RUST_HOST)/stage1/lib/rustlib/lx32-unknown-none-elf" ]; then \
+		echo "✓ Rust sysroot for lx32-unknown-none-elf already built"; \
+	else \
+		echo "→ Building Rust sysroot for lx32-unknown-none-elf..."; \
+		cd "$(RUST_LX32_DIR)" && python3 x.py build library/core \
+			--target lx32-unknown-none-elf --stage 1; \
+		echo "✓ Rust sysroot built for LX32"; \
+	fi
+
+setup-rust: build-rust-sysroot ## Full Rust toolchain setup: clone, build rustc, build libcore for LX32
+
+build-firmware: ## Build keyboard firmware for lx32-unknown-none-elf (usage: make build-firmware)
+	@if [ ! -f "$(RUST_LX32_RUSTC)" ]; then \
+		echo "ERROR: Custom rustc not found. Run: make setup-rust"; exit 1; \
+	fi
+	@echo "→ Building Rust keyboard firmware (lx32-unknown-none-elf)..."
+	@cd "$(PAC_DIR)" && \
+		RUSTC="$(RUST_LX32_RUSTC)" \
+		cargo build --release \
+			--target lx32-unknown-none-elf \
+			--features rt \
+			--example keyboard
+	@echo "✓ Firmware built:"
+	@echo "  ELF: $(PAC_DIR)/target/lx32-unknown-none-elf/release/examples/keyboard"
+	@$(LX32_LLVM_BIN)/llvm-objcopy -O binary \
+		"$(PAC_DIR)/target/lx32-unknown-none-elf/release/examples/keyboard" \
+		"$(PAC_DIR)/target/lx32-unknown-none-elf/release/examples/keyboard.bin" && \
+		echo "  BIN: $(PAC_DIR)/target/lx32-unknown-none-elf/release/examples/keyboard.bin" || true
+
+check-pac: ## Type-check pulsar_pac on the host (no LX32 toolchain needed)
+	@echo "→ Type-checking pulsar_pac on host..."
+	@cd "$(PAC_DIR)" && cargo check
+	@echo "✓ PAC check passed"
+
+build-rust-firmware-tests: ## Compile Rust firmware test programs (no simulation)
+	@if [ ! -f "$(RUST_LX32_RUSTC)" ]; then \
+		echo "ERROR: Custom rustc not found. Run: make setup-rust"; exit 1; \
+	fi
+	@echo "→ Compiling Rust firmware tests..."
+	@if [ ! -f "$(BACKEND_SRC)/tests/baremetal/crt0.o" ]; then \
+		echo "→ Assembling crt0.S..."; \
+		$(LX32_LLVM_BIN)/llvm-mc -arch=lx32 -filetype=obj \
+			$(BACKEND_SRC)/tests/baremetal/crt0.S \
+			-o $(BACKEND_SRC)/tests/baremetal/crt0.o; \
+	fi
+	@cd "$(RUST_PROGS_DIR)" && \
+		RUSTC="$(RUST_LX32_RUSTC)" \
+		cargo build --release
+	@echo "✓ Rust firmware tests compiled"
+
+test-rust-firmware: ## Compile and run Rust firmware tests on the LX32 RTL simulator
+	@if [ ! -f "$(RUST_LX32_RUSTC)" ]; then \
+		echo "ERROR: Custom rustc not found. Run: make setup-rust"; exit 1; \
+	fi
+	@echo "→ Running Rust firmware tests..."
+	@RUST_LX32_RUSTC="$(RUST_LX32_RUSTC)" \
+		LX32_LLVM_BIN="$(LX32_LLVM_BIN)" \
+		BENCH_RUNNER="$(BENCH_RUNNER)" \
+		RUST_PROGS_DIR="$(RUST_PROGS_DIR)" \
+		bash $(BACKEND_SRC)/tests/baremetal/run_rust_firmware.sh
 
 # ======================
 # Baremetal C Development
