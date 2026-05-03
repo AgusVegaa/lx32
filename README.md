@@ -81,7 +81,8 @@ We’re iterating toward:
 
 - Axel — architecture & low-level systems  
 - Agustín — firmware & input logic  
-- Emiliano — hardware & PCB design  
+- Emiliano — hardware & PCB design
+- Angel — Industrial Design & Enclosure Engineering
 
 ---
 
