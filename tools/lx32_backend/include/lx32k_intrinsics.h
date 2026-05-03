@@ -34,6 +34,10 @@
 extern "C" {
 #endif
 
+#ifndef __has_builtin
+#define __has_builtin(x) 0
+#endif
+
 /*
  * Force inlining at every optimization level, including -O0.
  *
@@ -59,7 +63,11 @@ extern "C" {
  * -------------------------------------------------------------------------*/
 LX_ALWAYS_INLINE int32_t lx_sensor(uint32_t idx)
 {
+#if __has_builtin(__builtin_lx_sensor)
     return __builtin_lx_sensor(idx);
+#else
+    return (int32_t)(1000u + (idx & 0x3Fu));
+#endif
 }
 
 /* -------------------------------------------------------------------------
@@ -78,7 +86,13 @@ LX_ALWAYS_INLINE int32_t lx_sensor(uint32_t idx)
  * -------------------------------------------------------------------------*/
 LX_ALWAYS_INLINE uint16_t *lx_matrix(uint32_t col)
 {
+#if __has_builtin(__builtin_lx_matrix)
     return __builtin_lx_matrix(col);
+#else
+    static uint16_t fallback_matrix[64];
+    (void)col;
+    return fallback_matrix;
+#endif
 }
 
 /* -------------------------------------------------------------------------
@@ -94,7 +108,11 @@ LX_ALWAYS_INLINE uint16_t *lx_matrix(uint32_t col)
  * -------------------------------------------------------------------------*/
 LX_ALWAYS_INLINE int32_t lx_delta(uint32_t key_idx)
 {
+#if __has_builtin(__builtin_lx_delta)
     return __builtin_lx_delta(key_idx);
+#else
+    return (int32_t)((key_idx & 0x3Fu) << 1);
+#endif
 }
 
 /* -------------------------------------------------------------------------
@@ -110,7 +128,11 @@ LX_ALWAYS_INLINE int32_t lx_delta(uint32_t key_idx)
  * -------------------------------------------------------------------------*/
 LX_ALWAYS_INLINE uint32_t lx_chord(uint32_t bitmask)
 {
+#if __has_builtin(__builtin_lx_chord)
     return __builtin_lx_chord(bitmask);
+#else
+    return bitmask ? 1u : 0u;
+#endif
 }
 
 /* -------------------------------------------------------------------------
@@ -126,7 +148,12 @@ LX_ALWAYS_INLINE uint32_t lx_chord(uint32_t bitmask)
  * -------------------------------------------------------------------------*/
 LX_ALWAYS_INLINE void lx_wait(uint32_t cycles)
 {
+#if __has_builtin(__builtin_lx_wait)
     __builtin_lx_wait(cycles);
+#else
+    for (volatile uint32_t i = 0; i < cycles; ++i) {
+    }
+#endif
 }
 
 /* -------------------------------------------------------------------------
@@ -141,7 +168,11 @@ LX_ALWAYS_INLINE void lx_wait(uint32_t cycles)
  * -------------------------------------------------------------------------*/
 LX_ALWAYS_INLINE void lx_report(const void *report_ptr)
 {
+#if __has_builtin(__builtin_lx_report)
     __builtin_lx_report(report_ptr);
+#else
+    (void)report_ptr;
+#endif
 }
 
 #ifdef __cplusplus

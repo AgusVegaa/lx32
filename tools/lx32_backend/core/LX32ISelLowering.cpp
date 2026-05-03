@@ -16,7 +16,7 @@
 #include "llvm/CodeGen/MachineFunction.h"
 #include "llvm/CodeGen/MachineInstrBuilder.h"
 #include "llvm/CodeGen/MachineRegisterInfo.h"
-#include "llvm/IR/IntrinsicsLX32.h"
+#include "llvm/IR/Intrinsics.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/raw_ostream.h"
@@ -779,25 +779,28 @@ SDValue LX32TargetLowering::lowerINTRINSIC(SDValue Op, SelectionDAG &DAG) const 
   unsigned ArgBase = HasChain ? 2 : 1;
   unsigned IntNo = cast<ConstantSDNode>(Op.getOperand(HasChain ? 1 : 0))
                        ->getZExtValue();
+  Intrinsic::ID IID = static_cast<Intrinsic::ID>(IntNo);
+  StringRef IntrBase = Intrinsic::getBaseName(IID);
 
   LLVM_DEBUG(dbgs() << "lx32-lower: lowerINTRINSIC #" << IntNo
+                    << " (" << IntrBase << ")"
                     << " HasChain=" << HasChain << "\n");
   // Read ops — produce a value, no side effects, never stall.
   //   Lowering: (intrinsic_id, rs1) → (rd : i32)
   //   These are modelled as INTRINSIC_WO_CHAIN; ArgBase = 1.
   struct ReadEntry {
-    unsigned IntrinsicID;
+    StringLiteral IntrinsicName;
     unsigned SDISD;
     const char *Name;
   };
   static const ReadEntry ReadOps[] = {
-    { Intrinsic::lx32_sensor, LX32ISD::LX32_SENSOR, "lx.sensor" },
-    { Intrinsic::lx32_matrix, LX32ISD::LX32_MATRIX, "lx.matrix" },
-    { Intrinsic::lx32_delta,  LX32ISD::LX32_DELTA,  "lx.delta"  },
-    { Intrinsic::lx32_chord,  LX32ISD::LX32_CHORD,  "lx.chord"  },
+    { "llvm.lx32.sensor", LX32ISD::LX32_SENSOR, "lx.sensor" },
+    { "llvm.lx32.matrix", LX32ISD::LX32_MATRIX, "lx.matrix" },
+    { "llvm.lx32.delta",  LX32ISD::LX32_DELTA,  "lx.delta"  },
+    { "llvm.lx32.chord",  LX32ISD::LX32_CHORD,  "lx.chord"  },
   };
   for (const auto &E : ReadOps) {
-    if (IntNo == E.IntrinsicID) {
+    if (IntrBase == E.IntrinsicName) {
       LLVM_DEBUG(dbgs() << "lx32-lower: → " << E.Name << " (read)\n");
       return DAG.getNode(E.SDISD, DL, Op->getVTList(),
                          Op.getOperand(ArgBase));
@@ -811,16 +814,17 @@ SDValue LX32TargetLowering::lowerINTRINSIC(SDValue Op, SelectionDAG &DAG) const 
     report_fatal_error("lx32: side-effecting intrinsic must carry a chain "
                        "(use __builtin_lx_wait / __builtin_lx_report)");
 
-  switch (IntNo) {
-  case Intrinsic::lx32_wait:
+  if (IntrBase == "llvm.lx32.wait") {
     LLVM_DEBUG(dbgs() << "lx32-lower: → lx.wait (chain)\n");
     return DAG.getNode(LX32ISD::LX32_WAIT, DL, MVT::Other,
                        Op.getOperand(0), Op.getOperand(ArgBase));
-  case Intrinsic::lx32_report:
+  }
+  if (IntrBase == "llvm.lx32.report") {
     LLVM_DEBUG(dbgs() << "lx32-lower: → lx.report (chain)\n");
     return DAG.getNode(LX32ISD::LX32_REPORT, DL, MVT::Other,
                        Op.getOperand(0), Op.getOperand(ArgBase));
-  default:
-    report_fatal_error("lx32: unknown intrinsic #" + Twine(IntNo));
   }
+
+  report_fatal_error("lx32: unknown intrinsic #" + Twine(IntNo) + " (" +
+                     Twine(IntrBase) + ")");
 }
