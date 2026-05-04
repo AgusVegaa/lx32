@@ -123,7 +123,13 @@ declare -a TESTS=(
     "06_pointer_walk      15   Iterator over stack array"
     "07_fibonacci_iter    55   Iterative fib(10)"
     "08_fibonacci_recursive 55 Recursive fib(10)"
-    "09_custom_intrinsics  0   LX32K custom instructions"
+    "09_custom_intrinsics  0   LX32K custom instructions (inline asm)"
+    "10_mul_softcall      42   Integer multiply via __mulsi3"
+    "11_global_array      50   Global static array via PseudoLA"
+    "12_bitops_shift      12   Shift + AND + OR patterns"
+    "13_nested_loop       10   Nested while loops"
+    "14_classify_fn        3   Multi-branch if/else chain"
+    "15_multi_args        31   Five-argument register passing"
 )
 
 # ── Run or just convert ───────────────────────────────────────────────────────
@@ -149,8 +155,11 @@ for entry in "${TESTS[@]}"; do
     # Convert ELF to flat binary.
     "$LLVM_OBJCOPY" -O binary "$elf" "$bin_file"
 
+    # Binary size in bytes (flat binary = exact instruction + data bytes).
+    bin_size=$(wc -c < "$bin_file" 2>/dev/null || echo "?")
+
     if [ "$HAS_RUNNER" -eq 0 ]; then
-        printf "  %-36s  COMPILED  (%s)\n" "$bin" "$desc"
+        printf "  %-36s  COMPILED  %4d B  (%s)\n" "$bin" "$bin_size" "$desc"
         SKIP=$((SKIP+1))
         continue
     fi
@@ -169,11 +178,11 @@ except Exception:
 " 2>/dev/null || echo -1)
 
     if [ "$actual_code" -eq "$expected" ]; then
-        printf "  %-36s  PASS  (exit=%d  %s)\n" "$bin" "$actual_code" "$desc"
+        printf "  %-36s  PASS  %4d B  (exit=%d  %s)\n" "$bin" "$bin_size" "$actual_code" "$desc"
         PASS=$((PASS+1))
     else
-        printf "  %-36s  FAIL  (expected=%d actual=%d  %s)\n" \
-               "$bin" "$expected" "$actual_code" "$desc"
+        printf "  %-36s  FAIL  %4d B  (expected=%d actual=%d  %s)\n" \
+               "$bin" "$bin_size" "$expected" "$actual_code" "$desc"
         FAIL=$((FAIL+1))
     fi
 done

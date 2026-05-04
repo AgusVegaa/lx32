@@ -235,7 +235,7 @@ RUST_LX32_SYSROOT     := $(RUST_LX32_DIR)/build/$(RUST_HOST)/stage1
 PAC_DIR        := $(CURDIR)/tools/pulsar_pac
 RUST_PROGS_DIR := $(CURDIR)/tools/lx32_backend/tests/baremetal/rust_programs
 
-.PHONY: check-llvm install-backend build-backend setup-backend test-baremetal test-baremetal-deep compile-c run-binary bench-all bench-compile-tests bench-build-runner bench-run bench-summary check-rust build-rust-compiler build-rust-sysroot setup-rust build-firmware check-pac build-rust-firmware-tests test-rust-firmware dev-rust
+.PHONY: check-llvm install-backend build-backend setup-backend rebuild-llvm rebuild-rust-compiler rebuild-backend test-baremetal test-baremetal-deep compile-c run-binary bench-all bench-compile-tests bench-build-runner bench-run bench-summary check-rust build-rust-compiler build-rust-sysroot setup-rust build-firmware check-pac build-rust-firmware-tests test-rust-firmware dev-rust
 
 check-llvm: ## Check LLVM, clone if missing
 	@if [ -d "$(LLVM_DIR)/.git" ]; then \
@@ -275,6 +275,36 @@ setup-backend: build-backend check-rust ## Full setup: clone LLVM + build backen
 	@echo "✓ LX32 backend ready"
 	@echo "  Run 'make setup-rust' to build the LX32 Rust compiler (~20–40 min)"
 
+rebuild-llvm: ## Incremental LLVM rebuild after backend source changes (fast — ninja only recompiles changed files)
+	@echo "→ Regenerating LX32 TableGen .inc files..."
+	@cd $(BACKEND_SRC)/TableGen && \
+		LLVM_TBLGEN=$(LLVM_DIR)/build/bin/llvm-tblgen \
+		LLVM_INCLUDE_DIR=$(LLVM_DIR)/llvm/include \
+		bash ./compile_td.sh
+	@echo "→ Incremental LLVM build ($(NPROC) cores)..."
+	@ninja -C $(LLVM_DIR)/build -j$(NPROC)
+	@echo "✓ LLVM rebuilt"
+
+rebuild-rust-compiler: ## Force-rebuild stage1 rustc after LLVM changes (relinks against the new LLVM)
+	@if [ ! -d "$(RUST_LX32_DIR)/.git" ]; then \
+		echo "ERROR: rust-lx32 not found. Run: make check-rust"; exit 1; \
+	fi
+	@if [ ! -f "$(LLVM_DIR)/build/bin/llvm-config" ]; then \
+		echo "ERROR: LLVM not built. Run: make rebuild-llvm"; exit 1; \
+	fi
+	@echo "→ Rebuilding stage1 rustc against updated LLVM..."
+	@echo "   (LIBRARY_PATH=/opt/homebrew/lib for Homebrew zstd)"
+	@echo "   This takes a few minutes (incremental relink, not full rebuild)"
+	@cd "$(RUST_LX32_DIR)" && \
+		LIBRARY_PATH=/opt/homebrew/lib \
+		python3 x.py build compiler --stage 1
+	@echo "✓ Custom rustc rebuilt: $(RUST_LX32_RUSTC)"
+
+rebuild-backend: rebuild-llvm rebuild-rust-compiler ## Full incremental rebuild: LLVM + Rust stage1 (use after editing backend .cpp/.td files)
+	@echo ""
+	@echo "✓ Backend + rustc rebuild complete"
+	@echo "  Run 'make test-rust-firmware' to validate with the new compiler"
+
 # ======================
 # Rust Firmware Development
 # ======================
@@ -297,9 +327,10 @@ build-rust-compiler: check-rust ## Build the custom stage1 rustc for LX32 (~20-4
 		echo "✓ Custom rustc built"; \
 	fi
 
-build-rust-sysroot: build-rust-compiler ## Symlink stdlib source so -Z build-std can find it (replaces x.py sysroot build)
+build-rust-sysroot: build-rust-compiler ## Prepare stage1 sysroot for -Z build-std (source + host std for build scripts)
 	@STAGE1_RUSTLIB="$(RUST_LX32_SYSROOT)/lib/rustlib"; \
 	LIBSRC="$$STAGE1_RUSTLIB/src/rust/library"; \
+	HOST_STDLIB_DIR="$$STAGE1_RUSTLIB/$(RUST_HOST)/lib"; \
 	if [ -e "$$LIBSRC" ]; then \
 		echo "✓ Rust stdlib source already linked at $$LIBSRC"; \
 	else \
@@ -307,6 +338,15 @@ build-rust-sysroot: build-rust-compiler ## Symlink stdlib source so -Z build-std
 		mkdir -p "$$STAGE1_RUSTLIB/src/rust"; \
 		ln -sfn "$(RUST_LX32_DIR)/library" "$$LIBSRC"; \
 		echo "✓ Rust stdlib source linked"; \
+	fi; \
+	if ls "$$HOST_STDLIB_DIR"/libstd-*.rlib >/dev/null 2>&1; then \
+		echo "✓ Stage1 host stdlib already present for $(RUST_HOST)"; \
+	else \
+		echo "→ Building stage1 host stdlib for $(RUST_HOST) (required for build.rs)..."; \
+		cd "$(RUST_LX32_DIR)" && \
+			LIBRARY_PATH=/opt/homebrew/lib \
+			python3 x.py build library/std --stage 1; \
+		echo "✓ Stage1 host stdlib built"; \
 	fi
 
 setup-rust: build-rust-sysroot ## Full Rust toolchain setup: clone, build rustc, build libcore for LX32
