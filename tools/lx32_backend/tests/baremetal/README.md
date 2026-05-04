@@ -54,7 +54,7 @@ tests, compiled with the custom LX32 rustc fork.
 Build the Rust compiler and LX32 sysroot once:
 
 ```bash
-make setup-rust           # clone, build stage1 rustc, build libcore for LX32
+make setup-rust           # clone, build stage1 rustc, prep build-std sources + host std for build scripts
 ```
 
 This takes 20–40 minutes the first time.  Subsequent runs are incremental.
