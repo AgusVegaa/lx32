@@ -6,18 +6,15 @@ MEMORY {
 }
 
 SECTIONS {
-    /* Startup code at 0x0 (5 instructions = 0x14 bytes). */
+    /* Startup code at 0x0. */
     .text.startup ORIGIN(ram) : {
         . = ALIGN(4);
         KEEP(*(.text.startup))   /* keep _start from being optimized out */
     } > ram
 
-    /*
-     * crt0 occupies 5 instructions (0x00–0x13).  Place user .text
-     * immediately after so the first instruction of main is reachable
-     * by the R_RISCV_JAL relocation emitted for "jal ra, main".
-     */
-    .text ORIGIN(ram) + 0x14 : {
+    /* User code follows startup code immediately. */
+    .text : {
+        . = ALIGN(4);
         *(.text .text.*)
     } > ram
 

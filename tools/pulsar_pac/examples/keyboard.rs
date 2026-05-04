@@ -9,7 +9,7 @@
 //! Binary size goal: < 256 bytes (comparable to the hand-written C equivalent).
 
 #![no_std]
-#![no_main] // _start is provided by pulsar::runtime (the `rt` feature)
+#![no_main] // _start comes from baremetal crt0.o (wired by `make build-firmware`)
 
 use pulsar::{dma, sensor, timing};
 
@@ -34,6 +34,13 @@ const HID_KEY_BASE: u8 = 0x04; // 'A'
 pub extern "C" fn main() -> i32 {
     loop {
         scan_and_report();
+    }
+}
+
+#[panic_handler]
+fn panic(_: &core::panic::PanicInfo) -> ! {
+    loop {
+        core::hint::spin_loop();
     }
 }
 

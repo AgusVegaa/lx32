@@ -29,8 +29,7 @@ rt = []
 
 # ── Examples ──────────────────────────────────────────────────────────────────
 [[example]]
-name              = "keyboard"
-required-features = ["rt"]
+name = "keyboard"
 
 # ── Profiles ──────────────────────────────────────────────────────────────────
 [profile.release]

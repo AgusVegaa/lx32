@@ -1,0 +1,22 @@
+# Build configuration for lx32-unknown-none-elf firmware tests.
+#
+# The custom LLVM rustc is supplied at build time via the RUSTC env variable.
+# The Makefile sets this automatically:
+#
+#   make test-rust-firmware            — compile + run all Rust tests on RTL
+#   make build-rust-firmware-tests     — compile only, no simulation
+#
+# Manual build (after `make setup-rust`):
+#   RUSTC=$(RUST_LX32_RUSTC) cargo build --release
+
+[build]
+target = "lx32-unknown-none-elf"
+
+[target.lx32-unknown-none-elf]
+linker = "ld.lld"
+rustflags = [
+    # Dead-code elimination — keeps the 4 KB firmware image small.
+    "-C", "link-arg=--gc-sections",
+    # Abort on unresolved symbols at link time, not silently at runtime.
+    "-C", "link-arg=--error-unresolved-symbols",
+]

@@ -1,13 +1,13 @@
 # Cargo build configuration for lx32-unknown-none-elf firmware.
 #
 # No default target is set here — specify it on the command line:
-#   cargo build --release --target ../lx32-unknown-none-elf.json --features rt
+#   cargo build --release --target lx32-unknown-none-elf --features rt
 #
 # Or use the Makefile targets:
 #   make build-firmware   — cross-compile for LX32
 #   make check-pac        — type-check on the host (no LX32 toolchain needed)
 
-[target.'cfg(target_arch = "lx32")']
+[target.lx32-unknown-none-elf]
 linker = "ld.lld"
 rustflags = [
     # Firmware linker script (relative to this directory at build time).
