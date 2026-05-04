@@ -12,6 +12,14 @@
 //! ```text
 //! _start:
 //!     lui  sp, 1          # sp = 0x1000 (top of 4 KB RAM)
+//!     la   t0, __bss_start
+//!     la   t1, __bss_end
+//! _bss_clear:
+//!     beq  t0, t1, _bss_done
+//!     sw   x0, 0(t0)
+//!     addi t0, t0, 4
+//!     jal  x0, _bss_clear
+//! _bss_done:
 //!     jal  ra, main       # call user main()
 //!     lui  t0, 0xFFFFF    # t0 = 0xFFFFF000
 //!     sw   a0, 4(t0)      # *(0xFFFFF004) = exit code  ← simulator halt
@@ -45,13 +53,22 @@ core::arch::global_asm!(
     "_start:",
     // Set up the stack.  The linker script places _stack_top at 0x1000.
     // lui encodes bits[31:12], so `lui sp, 1` → sp = 0x00001000.
-    "    lui  sp, 1",
+    "    lui  x2, 1",
+    // Zero-initialize .bss so Rust statics start from a defined state.
+    "    la   x5, __bss_start",
+    "    la   x6, __bss_end",
+    "_lx32_bss_clear:",
+    "    beq  x5, x6, _lx32_bss_done",
+    "    sw   x0, 0(x5)",
+    "    addi x5, x5, 4",
+    "    jal  x0, _lx32_bss_clear",
+    "_lx32_bss_done:",
     // Call user main().  JAL writes the return address to ra (x1).
     // Within 4 KB the JAL ±1 MB range is always sufficient.
-    "    jal  ra, main",
+    "    jal  x1, main",
     // Halt: write main's return value (a0) to the simulator exit register.
-    "    lui  t0, 0xFFFFF",     // t0 = 0xFFFFF000
-    "    sw   a0, 4(t0)",       // *(0xFFFFF004) = exit code
+    "    lui  x5, 0xFFFFF",     // x5 = 0xFFFFF000
+    "    sw   x10, 4(x5)",      // *(0xFFFFF004) = exit code
     "_lx32_halt:",
     "    jal  x0, _lx32_halt",  // spin — USB stays alive, debugger can attach
     ".size _start, . - _start",

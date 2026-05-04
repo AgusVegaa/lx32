@@ -183,6 +183,27 @@ bool llvm::LX32AsmParser::matchAndEmitInstruction(llvm::SMLoc IDLoc,
   switch (MatchResult) {
   case Match_Success:
     Inst.setLoc(IDLoc);
+    // Expand `la rd, sym` (PseudoLA) → LUI rd, sym  +  ADDI rd, rd, sym.
+    // The MCCodeEmitter has no encoding for pseudo-instructions, so they must
+    // be lowered here before being handed to the streamer.
+    if (Inst.getOpcode() == LX32::PseudoLA) {
+      unsigned Rd = Inst.getOperand(0).getReg();
+      const llvm::MCExpr *Sym = Inst.getOperand(1).getExpr();
+      llvm::MCInst LUI;
+      LUI.setOpcode(LX32::LUI);
+      LUI.setLoc(IDLoc);
+      LUI.addOperand(llvm::MCOperand::createReg(Rd));
+      LUI.addOperand(llvm::MCOperand::createExpr(Sym));
+      Out.emitInstruction(LUI, getSTI());
+      llvm::MCInst ADDI;
+      ADDI.setOpcode(LX32::ADDI);
+      ADDI.setLoc(IDLoc);
+      ADDI.addOperand(llvm::MCOperand::createReg(Rd));
+      ADDI.addOperand(llvm::MCOperand::createReg(Rd));
+      ADDI.addOperand(llvm::MCOperand::createExpr(Sym));
+      Out.emitInstruction(ADDI, getSTI());
+      return false;
+    }
     Out.emitInstruction(Inst, getSTI());
     return false;
   case Match_MissingFeature:

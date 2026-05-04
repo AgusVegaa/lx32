@@ -75,8 +75,10 @@ LX32TargetLowering::LX32TargetLowering(const TargetMachine &TM,
 
   setOperationAction(ISD::ROTL, MVT::i32, Expand);
   setOperationAction(ISD::ROTR, MVT::i32, Expand);
+  setOperationAction(ISD::BSWAP, MVT::i32, Expand);
+  setOperationAction(ISD::BSWAP, MVT::i64, Expand);
   setOperationAction(ISD::CTLZ, MVT::i32, Expand);
-  setOperationAction(ISD::CTTZ, MVT::i32, Expand);
+  setOperationAction(ISD::CTTZ, MVT::i32, Custom);
   setOperationAction(ISD::CTPOP, MVT::i32, Expand);
 
   // No sign-extend-inreg hardware; expand to shift pairs (sll + sra).
@@ -123,6 +125,7 @@ LX32TargetLowering::LX32TargetLowering(const TargetMachine &TM,
   // selector never has to re-interpret generic BR_CC/SETCC combinations.
   setOperationAction(ISD::BR_CC, MVT::i32, Custom);
   setOperationAction(ISD::BRCOND, MVT::Other, Custom);
+  setOperationAction(ISD::BR_JT, MVT::Other, Expand);
 
   setOperationAction(ISD::INTRINSIC_WO_CHAIN, MVT::Other, Custom);
   setOperationAction(ISD::INTRINSIC_W_CHAIN,  MVT::Other, Custom);
@@ -138,6 +141,44 @@ LX32TargetLowering::LX32TargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::ConstantPool,  MVT::i32, Expand);
 
   setMaxAtomicSizeInBitsSupported(0);
+
+  // f16/f128 are not supported as first-class ABI/codegen types on LX32.
+  // Keep them out of instruction selection and force generic legalization.
+  for (MVT VT : {MVT::f16, MVT::f128}) {
+    setOperationAction(ISD::LOAD, VT, Expand);
+    setOperationAction(ISD::STORE, VT, Expand);
+    setOperationAction(ISD::FABS, VT, Expand);
+    setOperationAction(ISD::FNEG, VT, Expand);
+    setOperationAction(ISD::FCOPYSIGN, VT, Expand);
+    setOperationAction(ISD::FADD, VT, Expand);
+    setOperationAction(ISD::FSUB, VT, Expand);
+    setOperationAction(ISD::FMUL, VT, Expand);
+    setOperationAction(ISD::FDIV, VT, Expand);
+    setOperationAction(ISD::FREM, VT, Expand);
+    setOperationAction(ISD::FSQRT, VT, Expand);
+    setOperationAction(ISD::FPOW, VT, Expand);
+    setOperationAction(ISD::FPOWI, VT, Expand);
+    setOperationAction(ISD::FSIN, VT, Expand);
+    setOperationAction(ISD::FCOS, VT, Expand);
+    setOperationAction(ISD::FLOG, VT, Expand);
+    setOperationAction(ISD::FLOG2, VT, Expand);
+    setOperationAction(ISD::FLOG10, VT, Expand);
+    setOperationAction(ISD::FEXP, VT, Expand);
+    setOperationAction(ISD::FEXP2, VT, Expand);
+    setOperationAction(ISD::FMINNUM, VT, Expand);
+    setOperationAction(ISD::FMAXNUM, VT, Expand);
+    setOperationAction(ISD::FMINIMUM, VT, Expand);
+    setOperationAction(ISD::FMAXIMUM, VT, Expand);
+    setOperationAction(ISD::FCEIL, VT, Expand);
+    setOperationAction(ISD::FTRUNC, VT, Expand);
+    setOperationAction(ISD::FRINT, VT, Expand);
+    setOperationAction(ISD::FNEARBYINT, VT, Expand);
+    setOperationAction(ISD::FROUND, VT, Expand);
+    setOperationAction(ISD::FROUNDEVEN, VT, Expand);
+    setOperationAction(ISD::SETCC, VT, Expand);
+    setOperationAction(ISD::SELECT_CC, VT, Expand);
+    setOperationAction(ISD::BR_CC, VT, Expand);
+  }
 
   // ── Soft-float: arithmetic ─────────────────────────────────────────────────
   // LX32 has no FPU; all f32/f64 ops map to standard compiler_builtins/libgcc
@@ -244,6 +285,12 @@ LX32TargetLowering::LX32TargetLowering(const TargetMachine &TM,
   setLibcallImpl(RTLIB::SHL_I128,  RTLIB::impl___ashlti3);
   setLibcallImpl(RTLIB::SRA_I128,  RTLIB::impl___ashrti3);
   setLibcallImpl(RTLIB::SRL_I128,  RTLIB::impl___lshrti3);
+  setLibcallImpl(RTLIB::CTLZ_I32,  RTLIB::impl___clzsi2);
+  setLibcallImpl(RTLIB::CTLZ_I64,  RTLIB::impl___clzdi2);
+  setLibcallImpl(RTLIB::CTLZ_I128, RTLIB::impl___clzti2);
+  setLibcallImpl(RTLIB::CTPOP_I32, RTLIB::impl___popcountsi2);
+  setLibcallImpl(RTLIB::CTPOP_I64, RTLIB::impl___popcountdi2);
+  setLibcallImpl(RTLIB::CTPOP_I128, RTLIB::impl___popcountti2);
 
   // ── Memory functions ───────────────────────────────────────────────────────
   setLibcallImpl(RTLIB::MEMCPY,  RTLIB::impl_memcpy);
@@ -437,6 +484,8 @@ SDValue LX32TargetLowering::LowerCall(
   SDLoc DL = CLI.DL;
   MachineFunction &MF = DAG.getMachineFunction();
 
+  CLI.IsTailCall = false; // LX32 does not implement tail call optimization
+
   if (CLI.IsVarArg)
     report_fatal_error("lx32: varargs call lowering is not implemented yet");
 
@@ -498,6 +547,7 @@ SDValue LX32TargetLowering::LowerCall(
   // redefines it as a return value) and eliminates the copy, losing the
   // argument value.
   SmallVector<std::pair<Register, SDValue>, 8> RegsToPass;
+  SmallVector<SDValue, 8> MemOpChains;
 
   for (unsigned I = 0, E = ArgLocs.size(); I != E; ++I) {
     const CCValAssign &VA = ArgLocs[I];
@@ -522,12 +572,26 @@ SDValue LX32TargetLowering::LowerCall(
       report_fatal_error("lx32: unsupported call argument location info");
     }
 
-    if (!VA.isRegLoc())
-      report_fatal_error("lx32: stack-passed call arguments are not implemented yet");
+    if (VA.isRegLoc()) {
+      RegsToPass.push_back({VA.getLocReg(), Val});
+      continue;
+    }
 
-    Chain = DAG.getCopyToReg(Chain, DL, VA.getLocReg(), Val, Glue);
+    assert(VA.isMemLoc() && "call argument must be assigned to register or memory");
+    int FI = MF.getFrameInfo().CreateFixedObject(VA.getLocVT().getStoreSize(),
+                                                 VA.getLocMemOffset(), false);
+    SDValue Addr = DAG.getFrameIndex(FI, PtrVT);
+    MemOpChains.push_back(
+        DAG.getStore(Chain, DL, Val, Addr,
+                     MachinePointerInfo::getFixedStack(MF, FI)));
+  }
+
+  if (!MemOpChains.empty())
+    Chain = DAG.getNode(ISD::TokenFactor, DL, MVT::Other, MemOpChains);
+
+  for (auto &[Reg, Val] : RegsToPass) {
+    Chain = DAG.getCopyToReg(Chain, DL, Reg, Val, Glue);
     Glue = Chain.getValue(1);
-    RegsToPass.push_back({VA.getLocReg(), Val});
   }
 
   SDValue Callee = CLI.Callee;
@@ -651,6 +715,8 @@ SDValue LX32TargetLowering::LowerOperation(SDValue Op,
     return lowerSELECT(Op, DAG);
   case ISD::SELECT_CC:
     return lowerSELECT_CC(Op, DAG);
+  case ISD::CTTZ:
+    return lowerCTTZ(Op, DAG);
   case ISD::INTRINSIC_WO_CHAIN:
   case ISD::INTRINSIC_W_CHAIN:
   case ISD::INTRINSIC_VOID:
@@ -658,6 +724,32 @@ SDValue LX32TargetLowering::LowerOperation(SDValue Op,
   default:
     llvm_unreachable("lx32: unexpected custom-lowered operation");
   }
+}
+
+SDValue LX32TargetLowering::lowerCTTZ(SDValue Op, SelectionDAG &DAG) const {
+  SDLoc DL(Op);
+  SDValue X = Op.getOperand(0);
+  EVT VT = Op.getValueType();
+  if (VT != MVT::i32)
+    return SDValue();
+
+  // cttz(x) = 31 - ctlz(x & -x)
+  SDValue Zero = DAG.getConstant(0, DL, MVT::i32);
+  SDValue NegX = DAG.getNode(ISD::SUB, DL, MVT::i32, Zero, X);
+  SDValue Isolated = DAG.getNode(ISD::AND, DL, MVT::i32, X, NegX);
+  SDValue Clz = DAG.getNode(ISD::CTLZ, DL, MVT::i32, Isolated);
+  SDValue Cttz = DAG.getNode(ISD::SUB, DL, MVT::i32,
+                             DAG.getConstant(31, DL, MVT::i32), Clz);
+
+  // ISD::CTTZ has operand #1 = is_zero_undef flag.
+  if (const auto *C = dyn_cast<ConstantSDNode>(Op.getOperand(1));
+      C && C->getZExtValue())
+    return Cttz;
+
+  // When zero is defined, return bitwidth on x == 0.
+  return DAG.getNode(ISD::SELECT_CC, DL, MVT::i32, X, Zero,
+                     DAG.getConstant(32, DL, MVT::i32), Cttz,
+                     DAG.getCondCode(ISD::SETEQ));
 }
 
 SDValue LX32TargetLowering::lowerGlobalAddress(SDValue Op,

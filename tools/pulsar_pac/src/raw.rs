@@ -33,9 +33,9 @@
 pub unsafe fn lx_sensor(idx: u32) -> i32 {
     let result: i32;
     core::arch::asm!(
-        "lx.sensor {rd}, {rs1}",
-        rd  = out(reg) result,
-        rs1 = in(reg)  idx,
+        "lx.sensor x10, x11",
+        lateout("x10") result,
+        in("x11") idx,
         options(nomem, nostack, pure),
     );
     result
@@ -52,9 +52,9 @@ pub unsafe fn lx_sensor(idx: u32) -> i32 {
 pub unsafe fn lx_matrix(col: u32) -> *const u16 {
     let result: u32;
     core::arch::asm!(
-        "lx.matrix {rd}, {rs1}",
-        rd  = out(reg) result,
-        rs1 = in(reg)  col,
+        "lx.matrix x10, x11",
+        lateout("x10") result,
+        in("x11") col,
         options(nomem, nostack, pure),
     );
     result as *const u16
@@ -71,9 +71,9 @@ pub unsafe fn lx_matrix(col: u32) -> *const u16 {
 pub unsafe fn lx_delta(key_idx: u32) -> i32 {
     let result: i32;
     core::arch::asm!(
-        "lx.delta {rd}, {rs1}",
-        rd  = out(reg) result,
-        rs1 = in(reg)  key_idx,
+        "lx.delta x10, x11",
+        lateout("x10") result,
+        in("x11") key_idx,
         options(nomem, nostack, pure),
     );
     result
@@ -90,9 +90,9 @@ pub unsafe fn lx_delta(key_idx: u32) -> i32 {
 pub unsafe fn lx_chord(bitmask: u32) -> u32 {
     let result: u32;
     core::arch::asm!(
-        "lx.chord {rd}, {rs1}",
-        rd  = out(reg) result,
-        rs1 = in(reg)  bitmask,
+        "lx.chord x10, x11",
+        lateout("x10") result,
+        in("x11") bitmask,
         options(nomem, nostack, pure),
     );
     result
@@ -112,8 +112,8 @@ pub unsafe fn lx_chord(bitmask: u32) -> u32 {
 #[inline(always)]
 pub unsafe fn lx_wait(cycles: u32) {
     core::arch::asm!(
-        "lx.wait {rs1}",
-        rs1 = in(reg) cycles,
+        "lx.wait x10",
+        in("x10") cycles,
         options(nostack),
     );
 }
@@ -134,8 +134,8 @@ pub unsafe fn lx_wait(cycles: u32) {
 #[inline(always)]
 pub unsafe fn lx_report(report_ptr: *const u8) {
     core::arch::asm!(
-        "lx.report {rs1}",
-        rs1 = in(reg) report_ptr,
+        "lx.report x10",
+        in("x10") report_ptr,
         options(nostack),
     );
 }

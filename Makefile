@@ -229,11 +229,13 @@ RUST_HOST      := $(shell rustc -vV 2>/dev/null | sed -n 's/^host: //p')
 ifeq ($(RUST_HOST),)
 RUST_HOST      := aarch64-apple-darwin
 endif
-RUST_LX32_RUSTC := $(RUST_LX32_DIR)/build/$(RUST_HOST)/stage1/bin/rustc
+RUST_LX32_RUSTC       := $(RUST_LX32_DIR)/build/$(RUST_HOST)/stage1/bin/rustc
+RUST_LX32_STAGE0_CARGO := $(RUST_LX32_DIR)/build/$(RUST_HOST)/stage0/bin/cargo
+RUST_LX32_SYSROOT     := $(RUST_LX32_DIR)/build/$(RUST_HOST)/stage1
 PAC_DIR        := $(CURDIR)/tools/pulsar_pac
 RUST_PROGS_DIR := $(CURDIR)/tools/lx32_backend/tests/baremetal/rust_programs
 
-.PHONY: check-llvm install-backend build-backend setup-backend test-baremetal test-baremetal-deep compile-c run-binary bench-all bench-compile-tests bench-build-runner bench-run bench-summary check-rust build-rust-compiler build-rust-sysroot setup-rust build-firmware check-pac build-rust-firmware-tests test-rust-firmware
+.PHONY: check-llvm install-backend build-backend setup-backend test-baremetal test-baremetal-deep compile-c run-binary bench-all bench-compile-tests bench-build-runner bench-run bench-summary check-rust build-rust-compiler build-rust-sysroot setup-rust build-firmware check-pac build-rust-firmware-tests test-rust-firmware dev-rust
 
 check-llvm: ## Check LLVM, clone if missing
 	@if [ -d "$(LLVM_DIR)/.git" ]; then \
@@ -295,28 +297,40 @@ build-rust-compiler: check-rust ## Build the custom stage1 rustc for LX32 (~20-4
 		echo "✓ Custom rustc built"; \
 	fi
 
-build-rust-sysroot: build-rust-compiler ## Build libcore for lx32-unknown-none-elf target
-	@if [ -d "$(RUST_LX32_DIR)/build/$(RUST_HOST)/stage1/lib/rustlib/lx32-unknown-none-elf" ]; then \
-		echo "✓ Rust sysroot for lx32-unknown-none-elf already built"; \
+build-rust-sysroot: build-rust-compiler ## Symlink stdlib source so -Z build-std can find it (replaces x.py sysroot build)
+	@STAGE1_RUSTLIB="$(RUST_LX32_SYSROOT)/lib/rustlib"; \
+	LIBSRC="$$STAGE1_RUSTLIB/src/rust/library"; \
+	if [ -e "$$LIBSRC" ]; then \
+		echo "✓ Rust stdlib source already linked at $$LIBSRC"; \
 	else \
-		echo "→ Building Rust sysroot for lx32-unknown-none-elf..."; \
-		cd "$(RUST_LX32_DIR)" && python3 x.py build library/core \
-			--target lx32-unknown-none-elf --stage 1; \
-		echo "✓ Rust sysroot built for LX32"; \
+		echo "→ Linking Rust stdlib source for -Z build-std..."; \
+		mkdir -p "$$STAGE1_RUSTLIB/src/rust"; \
+		ln -sfn "$(RUST_LX32_DIR)/library" "$$LIBSRC"; \
+		echo "✓ Rust stdlib source linked"; \
 	fi
 
 setup-rust: build-rust-sysroot ## Full Rust toolchain setup: clone, build rustc, build libcore for LX32
 
-build-firmware: ## Build keyboard firmware for lx32-unknown-none-elf (usage: make build-firmware)
+build-firmware: build-rust-sysroot ## Build keyboard firmware using -Z build-std (avoids cc-rs / no pre-built sysroot needed)
 	@if [ ! -f "$(RUST_LX32_RUSTC)" ]; then \
 		echo "ERROR: Custom rustc not found. Run: make setup-rust"; exit 1; \
 	fi
+	@if [ ! -f "$(RUST_LX32_STAGE0_CARGO)" ]; then \
+		echo "ERROR: Stage0 cargo not found at $(RUST_LX32_STAGE0_CARGO). Run: make build-rust-compiler"; exit 1; \
+	fi
 	@echo "→ Building Rust keyboard firmware (lx32-unknown-none-elf)..."
+	@echo "→ Assembling crt0.S..."
+	@$(LX32_LLVM_BIN)/llvm-mc -arch=lx32 -filetype=obj \
+		$(BACKEND_SRC)/tests/baremetal/crt0.S \
+		-o $(BACKEND_SRC)/tests/baremetal/crt0.o
 	@cd "$(PAC_DIR)" && \
 		RUSTC="$(RUST_LX32_RUSTC)" \
-		cargo build --release \
+		RUSTC_BOOTSTRAP=1 \
+		RUSTFLAGS="-C jump-tables=no -C link-arg=-T$(BACKEND_SRC)/tests/baremetal/link.ld -C link-arg=$(BACKEND_SRC)/tests/baremetal/crt0.o" \
+		"$(RUST_LX32_STAGE0_CARGO)" build --release \
 			--target lx32-unknown-none-elf \
-			--features rt \
+			-Z build-std=core,compiler_builtins \
+			-Z build-std-features=compiler-builtins-mem \
 			--example keyboard
 	@echo "✓ Firmware built:"
 	@echo "  ELF: $(PAC_DIR)/target/lx32-unknown-none-elf/release/examples/keyboard"
@@ -330,32 +344,42 @@ check-pac: ## Type-check pulsar_pac on the host (no LX32 toolchain needed)
 	@cd "$(PAC_DIR)" && cargo check
 	@echo "✓ PAC check passed"
 
-build-rust-firmware-tests: ## Compile Rust firmware test programs (no simulation)
+build-rust-firmware-tests: build-rust-sysroot ## Compile Rust firmware test programs with -Z build-std (no simulation)
 	@if [ ! -f "$(RUST_LX32_RUSTC)" ]; then \
 		echo "ERROR: Custom rustc not found. Run: make setup-rust"; exit 1; \
 	fi
-	@echo "→ Compiling Rust firmware tests..."
-	@if [ ! -f "$(BACKEND_SRC)/tests/baremetal/crt0.o" ]; then \
-		echo "→ Assembling crt0.S..."; \
-		$(LX32_LLVM_BIN)/llvm-mc -arch=lx32 -filetype=obj \
-			$(BACKEND_SRC)/tests/baremetal/crt0.S \
-			-o $(BACKEND_SRC)/tests/baremetal/crt0.o; \
+	@if [ ! -f "$(RUST_LX32_STAGE0_CARGO)" ]; then \
+		echo "ERROR: Stage0 cargo not found at $(RUST_LX32_STAGE0_CARGO)"; exit 1; \
 	fi
+	@echo "→ Assembling crt0.S..."
+	@$(LX32_LLVM_BIN)/llvm-mc -arch=lx32 -filetype=obj \
+		$(BACKEND_SRC)/tests/baremetal/crt0.S \
+		-o $(BACKEND_SRC)/tests/baremetal/crt0.o
+	@echo "→ Compiling Rust firmware tests..."
 	@cd "$(RUST_PROGS_DIR)" && \
 		RUSTC="$(RUST_LX32_RUSTC)" \
-		cargo build --release
+		RUSTC_BOOTSTRAP=1 \
+		RUSTFLAGS="-C jump-tables=no" \
+		"$(RUST_LX32_STAGE0_CARGO)" build --release \
+			-Z build-std=core,compiler_builtins \
+			-Z build-std-features=compiler-builtins-mem
 	@echo "✓ Rust firmware tests compiled"
 
-test-rust-firmware: ## Compile and run Rust firmware tests on the LX32 RTL simulator
+test-rust-firmware: build-rust-sysroot ## Compile and run Rust firmware tests on the LX32 RTL simulator
 	@if [ ! -f "$(RUST_LX32_RUSTC)" ]; then \
 		echo "ERROR: Custom rustc not found. Run: make setup-rust"; exit 1; \
 	fi
 	@echo "→ Running Rust firmware tests..."
 	@RUST_LX32_RUSTC="$(RUST_LX32_RUSTC)" \
+		RUST_LX32_STAGE0_CARGO="$(RUST_LX32_STAGE0_CARGO)" \
 		LX32_LLVM_BIN="$(LX32_LLVM_BIN)" \
 		BENCH_RUNNER="$(BENCH_RUNNER)" \
 		RUST_PROGS_DIR="$(RUST_PROGS_DIR)" \
 		bash $(BACKEND_SRC)/tests/baremetal/run_rust_firmware.sh
+
+dev-rust: check-pac build-rust-sysroot build-firmware test-rust-firmware ## Firmware dev workflow: PAC check + build keyboard firmware + compile/run Rust firmware tests
+	@echo ""
+	@echo "✓ dev-rust complete — all Rust firmware checks passed"
 
 # ======================
 # Baremetal C Development
@@ -467,8 +491,3 @@ bench-all: librust bench-build-runner bench-compile-tests bench-run ## Full benc
 
 bench-summary: ## Print a human-readable summary table from the last bench-all run
 	@python3 tools/bench_summary.py $(BENCH_REPORT)
-
-
-
-
-

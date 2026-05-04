@@ -57,9 +57,13 @@ void LX32FrameLowering::emitEpilogue(MachineFunction &MF,
 }
 
 bool LX32FrameLowering::hasFPImpl(const MachineFunction &MF) const {
+  // Never use a dedicated frame-pointer register (x8).  Emitting
+  //   ADD x8, x2, x0   in the prologue without first saving x8 breaks
+  // the ILP32 calling convention: x8 is callee-saved (CSR_LX32_ILP32),
+  // so every callee that adopts it as FP silently clobbers the caller's
+  // x8.  SP-relative addressing (x2) works fine for LX32's fixed-size
+  // frames and avoids the issue entirely.
   const MachineFrameInfo &MFI = MF.getFrameInfo();
-  // Keep FP only when structurally required.  The backend does not yet
-  // preserve X8 as a dedicated frame pointer across calls.
   return MFI.hasVarSizedObjects() || MFI.isFrameAddressTaken();
 }
 
@@ -96,5 +100,4 @@ StackOffset LX32FrameLowering::getFrameIndexReference(const MachineFunction &MF,
   FrameReg = hasFP(MF) ? LX32::X8 : LX32::X2;
   return StackOffset::getFixed(MFI.getObjectOffset(FI) + MFI.getStackSize());
 }
-
 

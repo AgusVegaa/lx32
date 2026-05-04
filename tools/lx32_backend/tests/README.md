@@ -74,10 +74,7 @@ iterative Fibonacci, and recursive Fibonacci stress cases.
 
 ## What is still missing for executing C end-to-end
 
-- `core/LX32FrameLowering.cpp` still has empty prologue/epilogue emission,
-  so non-leaf calls do not preserve `ra` safely yet.
-- MC/object emission for a full `-filetype=obj` pipeline is not complete in
-  this workspace cut, so linking/running ELF binaries is not ready.
-
+- MC/object emission for a full `-filetype=obj` pipeline is still limited in
+  this workspace cut, so a full production link/run flow needs more hardening.
 
 

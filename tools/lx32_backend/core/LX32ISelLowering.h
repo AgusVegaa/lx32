@@ -286,6 +286,7 @@ private:
   // equivalent LX32ISD::SELECT_CC node which PseudoSELECT_CC in TableGen
   // matches.  EmitInstrWithCustomInserter then expands it to a branch diamond.
   SDValue lowerSELECT_CC(SDValue Op, SelectionDAG &DAG) const;
+  SDValue lowerCTTZ(SDValue Op, SelectionDAG &DAG) const;
 
   SDValue lowerINTRINSIC(SDValue Op, SelectionDAG &DAG) const;
 

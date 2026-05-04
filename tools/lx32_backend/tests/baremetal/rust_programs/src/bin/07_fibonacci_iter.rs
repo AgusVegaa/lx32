@@ -7,11 +7,14 @@ fn fib(n: u32) -> i32 {
     if n <= 1 {
         return n as i32;
     }
-    let (mut a, mut b) = (0i32, 1i32);
-    for _ in 2..=n {
+    let mut a = 0i32;
+    let mut b = 1i32;
+    let mut i = 2u32;
+    while i <= n {
         let tmp = a + b;
         a = b;
         b = tmp;
+        i += 1;
     }
     b
 }

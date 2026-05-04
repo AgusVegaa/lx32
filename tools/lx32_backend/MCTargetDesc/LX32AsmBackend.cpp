@@ -31,6 +31,8 @@ public:
                                        FirstTargetFixupKind] = {
         {"fixup_lx32_branch", 0, 32, 0},
         {"fixup_lx32_jump",   0, 32, 0},
+        {"fixup_lx32_hi20",   12, 20, 0}, // U-type imm[31:12]
+        {"fixup_lx32_lo12_i", 20, 12, 0}, // I-type imm[31:20]
     };
 
     if (Kind < FirstTargetFixupKind)
@@ -58,8 +60,10 @@ public:
                                     MCValue &, uint64_t &Value) override {
     MCFixupKind Kind = Fixup.getKind();
     if (Kind == (MCFixupKind)LX32Fixups::fixup_lx32_jump ||
-        Kind == (MCFixupKind)LX32Fixups::fixup_lx32_branch) {
-      Value = 0; // placeholder; linker fills the real offset
+        Kind == (MCFixupKind)LX32Fixups::fixup_lx32_branch ||
+        Kind == (MCFixupKind)LX32Fixups::fixup_lx32_hi20 ||
+        Kind == (MCFixupKind)LX32Fixups::fixup_lx32_lo12_i) {
+      Value = 0; // placeholder; linker fills the real value
       return false; // unresolved → recordRelocation path
     }
     return {}; // default handling for all other fixups
@@ -98,6 +102,12 @@ public:
       uint32_t bit10_1  = (imm >> 1)  & 0x3FF;
       uint32_t bit20    = (imm >> 20) & 1;
       CurVal |= (bit19_12 << 12) | (bit11 << 20) | (bit10_1 << 21) | (bit20 << 31);
+    } else if (Fixup.getKind() == (MCFixupKind)LX32Fixups::fixup_lx32_hi20) {
+      // U-type: imm[31:12] in bits[31:12]
+      CurVal |= ((Value >> 12) & 0xFFFFF) << 12;
+    } else if (Fixup.getKind() == (MCFixupKind)LX32Fixups::fixup_lx32_lo12_i) {
+      // I-type: imm[11:0] in bits[31:20]
+      CurVal |= (Value & 0xFFF) << 20;
     }
 
     Data[0] = CurVal & 0xFF;

@@ -43,6 +43,19 @@ if [ ! -f "$RUST_LX32_RUSTC" ]; then
     exit 1
 fi
 
+# Stage0 cargo (supports -Z unstable flags, derived from custom rustc path)
+if [ -z "${RUST_LX32_STAGE0_CARGO:-}" ]; then
+    # RUST_LX32_RUSTC = .../build/<host>/stage1/bin/rustc
+    STAGE1_BIN="$(dirname "$RUST_LX32_RUSTC")"
+    HOST_BUILD_DIR="$(dirname "$(dirname "$STAGE1_BIN")")"
+    RUST_LX32_STAGE0_CARGO="$HOST_BUILD_DIR/stage0/bin/cargo"
+fi
+if [ ! -x "$RUST_LX32_STAGE0_CARGO" ]; then
+    echo "ERROR: stage0 cargo not found: $RUST_LX32_STAGE0_CARGO"
+    echo "  Run: make build-rust-compiler"
+    exit 1
+fi
+
 # LLVM tools (llvm-mc, llvm-objcopy)
 if [ -z "${LX32_LLVM_BIN:-}" ]; then
     REPO_ROOT="$(cd "$SCRIPT_DIR/../../../../" && pwd)"
@@ -92,7 +105,11 @@ echo "  rustc: $RUST_LX32_RUSTC"
 echo ""
 
 cd "$RUST_PROGS_DIR"
-RUSTC="$RUST_LX32_RUSTC" cargo build --release 2>&1
+RUSTFLAGS="${RUSTFLAGS:+$RUSTFLAGS }-C jump-tables=no" \
+RUSTC="$RUST_LX32_RUSTC" RUSTC_BOOTSTRAP=1 \
+    "$RUST_LX32_STAGE0_CARGO" build --release \
+    -Z build-std=core,compiler_builtins \
+    -Z build-std-features=compiler-builtins-mem 2>&1
 echo ""
 
 # ── Expected results ──────────────────────────────────────────────────────────

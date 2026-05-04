@@ -24,11 +24,13 @@ public:
 
 protected:
   unsigned getRelocType(const MCFixup &Fixup, const MCValue &Target, bool IsPCRel) const override {
-    if (Fixup.getKind() == (MCFixupKind)LX32Fixups::fixup_lx32_branch)
-      return ELF::R_RISCV_BRANCH;
-    if (Fixup.getKind() == (MCFixupKind)LX32Fixups::fixup_lx32_jump)
-      return ELF::R_RISCV_JAL;
-    return ELF::R_RISCV_NONE; // R_NONE is always 0
+    switch ((unsigned)Fixup.getKind()) {
+    case LX32Fixups::fixup_lx32_branch:  return ELF::R_RISCV_BRANCH;
+    case LX32Fixups::fixup_lx32_jump:    return ELF::R_RISCV_JAL;
+    case LX32Fixups::fixup_lx32_hi20:   return ELF::R_RISCV_HI20;
+    case LX32Fixups::fixup_lx32_lo12_i: return ELF::R_RISCV_LO12_I;
+    default: return ELF::R_RISCV_NONE;
+    }
   }
 };
 } // end anonymous namespace

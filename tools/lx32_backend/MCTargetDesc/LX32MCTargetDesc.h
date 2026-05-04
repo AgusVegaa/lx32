@@ -45,6 +45,8 @@ namespace LX32Fixups {
 enum Fixups {
   fixup_lx32_branch = FirstTargetFixupKind,
   fixup_lx32_jump,
+  fixup_lx32_hi20,    // R_RISCV_HI20  — upper 20 bits of absolute addr (LUI)
+  fixup_lx32_lo12_i,  // R_RISCV_LO12_I — lower 12 bits of absolute addr (ADDI)
   NumTargetFixupKinds
 };
 } // namespace LX32Fixups
