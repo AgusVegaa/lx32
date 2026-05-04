@@ -48,6 +48,18 @@ tests, compiled with the custom LX32 rustc fork.
 | `07_fibonacci_iter.rs`           | Iterative fib(10)                      | 55            |
 | `08_fibonacci_recursive.rs`      | Recursive fib(10) — stress stack       | 55            |
 | `09_custom_intrinsics.rs`        | All six LX32K hardware instructions    | 0             |
+| `10_mul_softcall.rs`             | Software multiply (`__mulsi3`)         | 42            |
+| `11_global_array.rs`             | Global addressing / PseudoLA lowering  | 50            |
+| `12_bitops_shift.rs`             | Shift + bitwise lowering paths         | 12            |
+| `13_nested_loop.rs`              | Nested control-flow loops              | 10            |
+| `14_classify_fn.rs`              | Multi-branch compare chain             | 3             |
+| `15_multi_args.rs`               | Five-argument ABI passing              | 31            |
+| `16_indirect_call.rs`            | Conditional branch selecting call path | 31            |
+| `17_volatile_mmio.rs`            | Volatile MMIO-style loads/stores       | 42            |
+| `18_sign_extend.rs`              | Signed extension from narrow integers  | 27            |
+| `19_reg_pressure.rs`             | Register-pressure arithmetic mix       | 102           |
+| `20_shift_mix.rs`                | Combined SHL/SHR/OR/XOR pattern        | 34            |
+| `21_div_mod_softcall.rs`         | Unsigned div/mod compiler_builtins     | 12            |
 
 ### Prerequisites
 
@@ -89,5 +101,6 @@ make check-pac                    # type-check pulsar_pac on the host (fast)
 
 - C programs use `-ffreestanding -fno-builtin -nostdlib`.
 - Rust programs use `#![no_std] #![no_main]`; `_start` comes from `crt0.S`.
+- Rust test runner validates both exit code and key register invariants (`x0 == 0`, `x10/a0 == expected exit`).
 - The `rt` feature of `pulsar_pac` provides its own `_start` (replaces `crt0.S`).
 - Both C and Rust programs write their exit code to `0xFFFFF004` (simulator halt).
