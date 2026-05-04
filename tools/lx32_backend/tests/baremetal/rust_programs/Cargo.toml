@@ -41,6 +41,54 @@ path = "src/bin/08_fibonacci_recursive.rs"
 name = "09_custom_intrinsics"
 path = "src/bin/09_custom_intrinsics.rs"
 
+[[bin]]
+name = "10_mul_softcall"
+path = "src/bin/10_mul_softcall.rs"
+
+[[bin]]
+name = "11_global_array"
+path = "src/bin/11_global_array.rs"
+
+[[bin]]
+name = "12_bitops_shift"
+path = "src/bin/12_bitops_shift.rs"
+
+[[bin]]
+name = "13_nested_loop"
+path = "src/bin/13_nested_loop.rs"
+
+[[bin]]
+name = "14_classify_fn"
+path = "src/bin/14_classify_fn.rs"
+
+[[bin]]
+name = "15_multi_args"
+path = "src/bin/15_multi_args.rs"
+
+[[bin]]
+name = "16_indirect_call"
+path = "src/bin/16_indirect_call.rs"
+
+[[bin]]
+name = "17_volatile_mmio"
+path = "src/bin/17_volatile_mmio.rs"
+
+[[bin]]
+name = "18_sign_extend"
+path = "src/bin/18_sign_extend.rs"
+
+[[bin]]
+name = "19_reg_pressure"
+path = "src/bin/19_reg_pressure.rs"
+
+[[bin]]
+name = "20_shift_mix"
+path = "src/bin/20_shift_mix.rs"
+
+[[bin]]
+name = "21_div_mod_softcall"
+path = "src/bin/21_div_mod_softcall.rs"
+
 [profile.release]
 opt-level     = "z"
 lto           = true

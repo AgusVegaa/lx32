@@ -130,6 +130,12 @@ declare -a TESTS=(
     "13_nested_loop       10   Nested while loops"
     "14_classify_fn        3   Multi-branch if/else chain"
     "15_multi_args        31   Five-argument register passing"
+    "16_indirect_call     31   Conditional branch selecting call target"
+    "17_volatile_mmio     42   Volatile memory load/store ordering"
+    "18_sign_extend       27   i8 sign extension and mixed-width arithmetic"
+    "19_reg_pressure     102   High register pressure arithmetic mix"
+    "20_shift_mix         34   Combined left/right shifts with masking"
+    "21_div_mod_softcall  12   Unsigned div/mod compiler_builtins libcalls"
 )
 
 # ── Run or just convert ───────────────────────────────────────────────────────
@@ -164,25 +170,35 @@ for entry in "${TESTS[@]}"; do
         continue
     fi
 
-    # Run on RTL simulation and check exit code.
-    actual_code=0
+    # Run on RTL simulation and check exit code + key register invariants.
+    actual_code=-1
+    x0_val=-1
+    x10_val=-1
     "$BENCH_RUNNER" --binary "$bin_file" --json > /tmp/lx32_rust_result.json 2>/dev/null || true
-    actual_code=$(python3 -c "
+    read -r actual_code x0_val x10_val <<EOF
+$(python3 -c "
 import json, sys
 try:
     with open('/tmp/lx32_rust_result.json') as f:
         data = json.load(f)
-    print(data.get('exit_code', -1))
+    code = data.get('exit_code', -1)
+    regs = data.get('registers', [])
+    x0 = int(regs[0]) if isinstance(regs, list) and len(regs) > 0 else -1
+    x10 = int(regs[10]) if isinstance(regs, list) and len(regs) > 10 else -1
+    code_i = int(code) if code is not None else -1
+    print(f\"{code_i} {x0} {x10}\")
 except Exception:
-    print(-1)
-" 2>/dev/null || echo -1)
+    print(\"-1 -1 -1\")
+" 2>/dev/null || echo "-1 -1 -1")
+EOF
 
-    if [ "$actual_code" -eq "$expected" ]; then
-        printf "  %-36s  PASS  %4d B  (exit=%d  %s)\n" "$bin" "$bin_size" "$actual_code" "$desc"
+    if [ "$actual_code" -eq "$expected" ] && [ "$x0_val" -eq 0 ] && [ "$x10_val" -eq "$expected" ]; then
+        printf "  %-36s  PASS  %4d B  (exit=%d x0=%d x10=%d  %s)\n" \
+               "$bin" "$bin_size" "$actual_code" "$x0_val" "$x10_val" "$desc"
         PASS=$((PASS+1))
     else
-        printf "  %-36s  FAIL  %4d B  (expected=%d actual=%d  %s)\n" \
-               "$bin" "$bin_size" "$expected" "$actual_code" "$desc"
+        printf "  %-36s  FAIL  %4d B  (expected_exit=%d actual_exit=%d x0=%d expected_x0=0 x10=%d expected_x10=%d  %s)\n" \
+               "$bin" "$bin_size" "$expected" "$actual_code" "$x0_val" "$x10_val" "$expected" "$desc"
         FAIL=$((FAIL+1))
     fi
 done
