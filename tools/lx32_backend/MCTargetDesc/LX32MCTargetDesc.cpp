@@ -16,6 +16,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "LX32MCTargetDesc.h"
+#include "LX32MCInstPrinter.h"
 #include "LX32MCAsmInfo.h"
 #include "../TargetInfo/LX32TargetInfo.h"
 
@@ -118,6 +119,13 @@ public:
 #include "LX32GenAsmWriter.inc"
 
 } // anonymous namespace
+
+// Expose the TableGen-generated register name table via a named function so
+// that LX32AsmPrinter can access it without depending on LX32InstPrinter
+// (which lives in the anonymous namespace of this TU).
+const char *llvm::LX32GetAsmRegName(MCRegister Reg) {
+  return LX32InstPrinter::getRegisterName(Reg, LX32::NoRegAltName);
+}
 
 //===----------------------------------------------------------------------===//
 // Factory functions

@@ -127,7 +127,15 @@ LX32TargetLowering::LX32TargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::BRCOND, MVT::Other, Custom);
   setOperationAction(ISD::BR_JT, MVT::Other, Expand);
 
+  // Register all intrinsic return-type variants as Custom so that
+  // lowerINTRINSIC is called regardless of whether the intrinsic returns
+  // void (MVT::Other) or an i32 value.
+  // Without the i32 entry, LLVM defaults to "Legal" for INTRINSIC_WO_CHAIN
+  // returning i32, causing a "cannot select" crash for lx.sensor / lx.matrix /
+  // lx.delta / lx.chord when they are used as LLVM intrinsics (not inline asm).
+  setOperationAction(ISD::INTRINSIC_WO_CHAIN, MVT::i32,   Custom);
   setOperationAction(ISD::INTRINSIC_WO_CHAIN, MVT::Other, Custom);
+  setOperationAction(ISD::INTRINSIC_W_CHAIN,  MVT::i32,   Custom);
   setOperationAction(ISD::INTRINSIC_W_CHAIN,  MVT::Other, Custom);
   setOperationAction(ISD::INTRINSIC_VOID,     MVT::Other, Custom);
 
@@ -141,6 +149,31 @@ LX32TargetLowering::LX32TargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::ConstantPool,  MVT::i32, Expand);
 
   setMaxAtomicSizeInBitsSupported(0);
+
+  // ── Bare-metal: operations that do not apply to this target ────────────────
+  // These expansions prevent "Cannot select" crashes when Rust's core/
+  // compiler_builtins happens to emit these nodes (e.g., via panic infra,
+  // address-of-frame queries, or TLS-aware allocators).
+
+  // TLS is meaningless on a bare-metal single-task target.
+  setOperationAction(ISD::GlobalTLSAddress, MVT::i32, Expand);
+
+  // No frame/return-address intrinsic support — bare-metal code does not
+  // need stack backtraces.
+  setOperationAction(ISD::FRAMEADDR,  MVT::i32, Expand);
+  setOperationAction(ISD::RETURNADDR, MVT::i32, Expand);
+
+  // Dynamic stack allocation (__builtin_alloca) is not supported: LX32 has
+  // fixed-size frames and no VLA mechanism.
+  setOperationAction(ISD::DYNAMIC_STACKALLOC, MVT::i32, Expand);
+
+  // Stack save/restore (setjmp/longjmp support): not used on bare-metal.
+  setOperationAction(ISD::STACKSAVE,    MVT::Other, Expand);
+  setOperationAction(ISD::STACKRESTORE, MVT::Other, Expand);
+
+  // Atomic fence — single-core microcontroller, fence is always a no-op.
+  // Lowered to nothing in lowerATOMIC_FENCE (returns the chain unchanged).
+  setOperationAction(ISD::ATOMIC_FENCE, MVT::Other, Custom);
 
   // f16/f128 are not supported as first-class ABI/codegen types on LX32.
   // Keep them out of instruction selection and force generic legalization.
@@ -717,6 +750,10 @@ SDValue LX32TargetLowering::LowerOperation(SDValue Op,
     return lowerSELECT_CC(Op, DAG);
   case ISD::CTTZ:
     return lowerCTTZ(Op, DAG);
+  case ISD::ATOMIC_FENCE:
+    // Single-core microcontroller: fences have no hardware meaning.
+    // Return the input chain unchanged so the fence node is eliminated.
+    return Op.getOperand(0);
   case ISD::INTRINSIC_WO_CHAIN:
   case ISD::INTRINSIC_W_CHAIN:
   case ISD::INTRINSIC_VOID:
@@ -962,4 +999,35 @@ SDValue LX32TargetLowering::lowerINTRINSIC(SDValue Op, SelectionDAG &DAG) const 
 
   report_fatal_error("lx32: unknown intrinsic #" + Twine(IntNo) + " (" +
                      Twine(IntrBase) + ")");
+}
+
+// ── Inline asm constraint support ────────────────────────────────────────────
+// Map the standard RISC-V 'r' (general register) constraint so that Rust's
+// `reg` / `in(reg)` / `lateout(reg)` inline asm operands compile on LX32.
+
+TargetLowering::ConstraintType
+LX32TargetLowering::getConstraintType(StringRef Constraint) const {
+  if (Constraint.size() == 1) {
+    switch (Constraint[0]) {
+    case 'r':
+      return C_RegisterClass;
+    default:
+      break;
+    }
+  }
+  return TargetLowering::getConstraintType(Constraint);
+}
+
+std::pair<unsigned, const TargetRegisterClass *>
+LX32TargetLowering::getRegForInlineAsmConstraint(
+    const TargetRegisterInfo *TRI, StringRef Constraint, MVT VT) const {
+  if (Constraint.size() == 1) {
+    switch (Constraint[0]) {
+    case 'r':
+      return std::make_pair(0U, &LX32::GPRRegClass);
+    default:
+      break;
+    }
+  }
+  return TargetLowering::getRegForInlineAsmConstraint(TRI, Constraint, VT);
 }

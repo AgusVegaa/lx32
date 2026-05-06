@@ -69,7 +69,7 @@ pub fn run_long_program_fuzzer(params: LongProgramTestParams, seed: u64) {
             enable_alu: true,
             enable_jumps: true,
             enable_upper_imm: true,
-            enable_custom: false,
+            enable_custom: true,
         };
 
         let program = Program::generate(config, program_seed);

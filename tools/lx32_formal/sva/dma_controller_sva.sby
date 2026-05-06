@@ -1,0 +1,15 @@
+[options]
+mode bmc
+depth 16
+
+[engines]
+smtbmc z3
+
+[script]
+read -formal -sv dma_controller.sv
+read -formal -sv dma_controller_sva.sv
+prep -top dma_controller_sva
+
+[files]
+rtl/core/dma_controller.sv
+tools/lx32_formal/sva/dma_controller_sva.sv

@@ -95,6 +95,9 @@ def OPC_CUSTOM_1 : LX32Opcode<"CUSTOM-1", 0b0101011>;
 class LXInstCommon<dag outs, dag ins, string opcodestr, string argstr>
     : Instruction {
   let Namespace       = "LX32";
+  // All LX32 instructions go into the "LX32" disassembler namespace.
+  // The generated table is named DecoderTableLX3232 (namespace + bit-width).
+  let DecoderNamespace = "LX32";
   field bits<32> Inst;
   let Size            = 4;
   dag OutOperandList  = outs;
@@ -120,9 +123,15 @@ class LXInst<LX32Opcode opcode, dag outs, dag ins,
 // correct register class to each operand position without guessing.
 //===----------------------------------------------------------------------===//
 
-def LX32GPROut      : RegisterOperand<GPR>;
-def LX32GPRIn       : RegisterOperand<GPR>;
-def LX32GPRNOX0Out  : RegisterOperand<GPRNOX0>;
+def LX32GPROut : RegisterOperand<GPR> {
+  let DecoderMethod = "DecodeGPRRegisterClass";
+}
+def LX32GPRIn : RegisterOperand<GPR> {
+  let DecoderMethod = "DecodeGPRRegisterClass";
+}
+def LX32GPRNOX0Out : RegisterOperand<GPRNOX0> {
+  let DecoderMethod = "DecodeGPRRegisterClass";
+}
 
 //===----------------------------------------------------------------------===//
 // R-Type format  —  register-register operations

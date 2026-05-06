@@ -19,6 +19,7 @@
 
 #include "LX32TargetMachine.h"
 #include "LX32ISelDAGToDAG.h"
+#include "LX32PeepholePass.h"
 
 #include "../TargetInfo/LX32TargetInfo.h"
 
@@ -120,6 +121,13 @@ public:
   bool addInstSelector() override {
     addPass(createLX32ISelDag(getLX32TargetMachine(), getOptLevel()));
     return false;
+  }
+
+  // addPreRegAlloc — run target-specific passes before register allocation.
+  void addPreRegAlloc() override {
+    // Peephole: fold LX_DELTA+SLTI+Branch into LX_DELTA+Branch, saving one
+    // instruction per key in the scan loop (~64 cycles / frame at 50 MHz).
+    addPass(createLX32PeepholePass());
   }
 };
 

@@ -2,7 +2,9 @@
 
 package lx32_decode_pkg;
 
-  import lx32_arch_pkg::*;
+  // XLEN is fixed at 32 for LX32; avoid `import` inside package body
+  // because Yosys formal flow does not support that construct.
+  localparam int XLEN = 32;
 
   // ============================================================
   // LX32 base Immediate Decode Package
@@ -25,7 +27,7 @@ package lx32_decode_pkg;
   // -------------------------
   // I-Type Immediate
   // -------------------------
-  function automatic logic [XLEN-1:0] get_i_imm(instr_t instr);
+  function automatic logic [XLEN-1:0] get_i_imm(logic [31:0] instr);
     return {
       {(XLEN - I_IMM_BITS){instr[SIGN_BIT]}},
       instr[31:20]
@@ -35,7 +37,7 @@ package lx32_decode_pkg;
   // -------------------------
   // S-Type Immediate
   // -------------------------
-  function automatic logic [XLEN-1:0] get_s_imm(instr_t instr);
+  function automatic logic [XLEN-1:0] get_s_imm(logic [31:0] instr);
     return {
       {(XLEN - S_IMM_BITS){instr[SIGN_BIT]}},
       instr[31:25],
@@ -46,7 +48,7 @@ package lx32_decode_pkg;
   // -------------------------
   // B-Type Immediate
   // -------------------------
-  function automatic logic [XLEN-1:0] get_b_imm(instr_t instr);
+  function automatic logic [XLEN-1:0] get_b_imm(logic [31:0] instr);
     return {
       {(XLEN - B_IMM_BITS){instr[SIGN_BIT]}},
       instr[31],
@@ -61,7 +63,7 @@ package lx32_decode_pkg;
   // U-Type Immediate
   // -------------------------
   /* verilator lint_off UNUSEDSIGNAL */
-  function automatic logic [XLEN-1:0] get_u_imm(instr_t instr);
+  function automatic logic [XLEN-1:0] get_u_imm(logic [31:0] instr);
     return {
       instr[31:12],
       {U_LOW_BITS{1'b0}}
@@ -72,7 +74,7 @@ package lx32_decode_pkg;
   // -------------------------
   // J-Type Immediate
   // -------------------------
-  function automatic logic [XLEN-1:0] get_j_imm(instr_t instr);
+  function automatic logic [XLEN-1:0] get_j_imm(logic [31:0] instr);
     return {
       {(XLEN - J_IMM_BITS){instr[SIGN_BIT]}},
       instr[31],

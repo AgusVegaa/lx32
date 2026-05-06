@@ -26,7 +26,12 @@
 
 #![no_std]
 
+pub mod calibration;
+pub mod config;
 pub mod dma;
+pub mod gpio;
+pub mod interrupt;
+pub mod rapid_trigger;
 pub mod raw;
 pub mod sensor;
 pub mod timing;
