@@ -345,16 +345,26 @@ check-rust: ## Check if rust-lx32 fork is cloned; clone if missing
 	fi
 
 build-rust-compiler: check-rust ## Build the custom stage1 rustc for LX32 (~20-40 min first time)
-	@if [ -f "$(RUST_LX32_RUSTC)" ]; then \
-		echo "✓ Custom rustc already built: $(RUST_LX32_RUSTC)"; \
-	else \
-		echo "→ Building stage1 rustc — this takes 20–40 minutes..."; \
-		cd "$(RUST_LX32_DIR)" && python3 x.py build compiler --stage 1 || exit 1; \
-		if [ -f "$(RUST_LX32_RUSTC)" ]; then \
-			echo "✓ Custom rustc built"; \
+	@RUSTC_OK=0; \
+	if [ -f "$(RUST_LX32_RUSTC)" ]; then \
+		if "$(RUST_LX32_RUSTC)" --target lx32-unknown-none-elf --print cfg >/dev/null 2>&1; then \
+			RUSTC_OK=1; \
+			echo "✓ Custom rustc already built: $(RUST_LX32_RUSTC)"; \
 		else \
+			echo "⚠ Existing stage1 rustc is invalid for lx32 target; rebuilding..."; \
+		fi; \
+	fi; \
+	if [ "$$RUSTC_OK" -ne 1 ]; then \
+		echo "→ Building stage1 rustc — this takes 20–40 minutes..."; \
+		rm -rf "$(RUST_LX32_SYSROOT)"; \
+		cd "$(RUST_LX32_DIR)" && python3 x.py build compiler --stage 1 || exit 1; \
+		if [ ! -f "$(RUST_LX32_RUSTC)" ]; then \
 			echo "ERROR: stage1 rustc missing after x.py build: $(RUST_LX32_RUSTC)"; exit 1; \
 		fi; \
+		if ! "$(RUST_LX32_RUSTC)" --target lx32-unknown-none-elf --print cfg >/dev/null 2>&1; then \
+			echo "ERROR: stage1 rustc failed lx32 target probe after rebuild"; exit 1; \
+		fi; \
+		echo "✓ Custom rustc built"; \
 	fi
 
 build-rust-sysroot: build-rust-compiler ## Prepare stage1 sysroot for -Z build-std (source + host std for build scripts)
