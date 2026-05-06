@@ -379,8 +379,9 @@ build-rust-compiler: check-rust ensure-rust-bootstrap ## Build the custom stage1
 	fi; \
 	if [ "$$RUSTC_OK" -ne 1 ]; then \
 		echo "→ Building stage1 rustc — this takes 20–40 minutes..."; \
+		echo "   (LIBRARY_PATH=/opt/homebrew/lib for Homebrew zstd)"; \
 		rm -rf "$(RUST_LX32_SYSROOT)"; \
-		cd "$(RUST_LX32_DIR)" && python3 x.py build compiler --stage 1 || exit 1; \
+		cd "$(RUST_LX32_DIR)" && LIBRARY_PATH=/opt/homebrew/lib python3 x.py build compiler --stage 1 || exit 1; \
 		if [ ! -f "$(RUST_LX32_RUSTC)" ]; then \
 			echo "ERROR: stage1 rustc missing after x.py build: $(RUST_LX32_RUSTC)"; exit 1; \
 		fi; \
