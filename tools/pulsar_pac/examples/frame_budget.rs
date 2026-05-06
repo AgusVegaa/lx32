@@ -121,7 +121,7 @@ fn panic(_: &core::panic::PanicInfo) -> ! {
 #[inline(never)]
 fn scan_frame() {
     // SAFETY: single-threaded bare metal; no concurrent access.
-    let keys = unsafe { &mut KEYS };
+    let keys = core::ptr::addr_of_mut!(KEYS) as *mut KeyTracker;
 
     let mut report_keys = [0u8; MAX_KEYS];
     let mut count = 0usize;
@@ -133,14 +133,15 @@ fn scan_frame() {
         let raw_val = sensor::read(idx as u32);
 
         if raw_val < NOISE_FLOOR {
-            if keys[idx].state == KeyState::Actuated {
-                keys[idx].state     = KeyState::Idle;
-                keys[idx].local_min = 0;
+            let key = unsafe { &mut *keys.add(idx) };
+            if key.state == KeyState::Actuated {
+                key.state     = KeyState::Idle;
+                key.local_min = 0;
             }
             continue;
         }
 
-        let pressed = keys[idx].update(raw_val);
+        let pressed = unsafe { (&mut *keys.add(idx)).update(raw_val) };
 
         if pressed && count < MAX_KEYS {
             report_keys[count] = HID_KEY_BASE.wrapping_add((idx % 26) as u8);

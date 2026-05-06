@@ -135,7 +135,7 @@ fn panic(_: &core::panic::PanicInfo) -> ! {
 #[inline(never)]
 fn scan_and_report() {
     // SAFETY: single-threaded bare metal; no concurrent access.
-    let keys = unsafe { &mut KEYS };
+    let keys = core::ptr::addr_of_mut!(KEYS) as *mut KeyTracker;
 
     // --- Step 1: read the full snapshot pointer once (1 lx.matrix instruction).
     // The snapshot is double-buffered; the returned pointer is always stable.
@@ -154,14 +154,15 @@ fn scan_and_report() {
 
         if raw_val < NOISE_FLOOR {
             // Force-reset the tracker when the sensor reads near zero.
-            if keys[idx].state == KeyState::Actuated {
-                keys[idx].state     = KeyState::Idle;
-                keys[idx].local_min = 0;
+            let key = unsafe { &mut *keys.add(idx) };
+            if key.state == KeyState::Actuated {
+                key.state     = KeyState::Idle;
+                key.local_min = 0;
             }
             continue;
         }
 
-        let pressed = keys[idx].update(raw_val);
+        let pressed = unsafe { (&mut *keys.add(idx)).update(raw_val) };
 
         if pressed && count < MAX_KEYS {
             // Map key index to a HID Usage ID.
