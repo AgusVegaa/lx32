@@ -333,9 +333,14 @@ rebuild-backend: rebuild-llvm rebuild-rust-compiler ## Full incremental rebuild:
 check-rust: ## Check if rust-lx32 fork is cloned; clone if missing
 	@if [ -d "$(RUST_LX32_DIR)/.git" ]; then \
 		echo "✓ rust-lx32 found at $(RUST_LX32_DIR)"; \
+		if [ "$$(git -C "$(RUST_LX32_DIR)" rev-parse --is-shallow-repository 2>/dev/null)" = "true" ]; then \
+			echo "→ Expanding shallow rust-lx32 history for x.py..."; \
+			git -C "$(RUST_LX32_DIR)" fetch --unshallow --tags || { echo "ERROR: failed to unshallow rust-lx32"; exit 1; }; \
+			echo "✓ rust-lx32 history expanded"; \
+		fi; \
 	else \
 		echo "→ Cloning rust-lx32 fork..."; \
-		git clone --depth=1 $(RUST_LX32_REPO) $(RUST_LX32_DIR); \
+		git clone $(RUST_LX32_REPO) $(RUST_LX32_DIR); \
 		echo "✓ rust-lx32 cloned"; \
 	fi
 
@@ -344,8 +349,12 @@ build-rust-compiler: check-rust ## Build the custom stage1 rustc for LX32 (~20-4
 		echo "✓ Custom rustc already built: $(RUST_LX32_RUSTC)"; \
 	else \
 		echo "→ Building stage1 rustc — this takes 20–40 minutes..."; \
-		cd "$(RUST_LX32_DIR)" && python3 x.py build compiler --stage 1; \
-		echo "✓ Custom rustc built"; \
+		cd "$(RUST_LX32_DIR)" && python3 x.py build compiler --stage 1 || exit 1; \
+		if [ -f "$(RUST_LX32_RUSTC)" ]; then \
+			echo "✓ Custom rustc built"; \
+		else \
+			echo "ERROR: stage1 rustc missing after x.py build: $(RUST_LX32_RUSTC)"; exit 1; \
+		fi; \
 	fi
 
 build-rust-sysroot: build-rust-compiler ## Prepare stage1 sysroot for -Z build-std (source + host std for build scripts)
@@ -366,8 +375,12 @@ build-rust-sysroot: build-rust-compiler ## Prepare stage1 sysroot for -Z build-s
 		echo "→ Building stage1 host stdlib for $(RUST_HOST) (required for build.rs)..."; \
 		cd "$(RUST_LX32_DIR)" && \
 			LIBRARY_PATH=/opt/homebrew/lib \
-			python3 x.py build library/std --stage 1; \
-		echo "✓ Stage1 host stdlib built"; \
+			python3 x.py build library/std --stage 1 || exit 1; \
+		if ls "$$HOST_STDLIB_DIR"/libstd-*.rlib >/dev/null 2>&1; then \
+			echo "✓ Stage1 host stdlib built"; \
+		else \
+			echo "ERROR: stage1 host stdlib missing after x.py build: $$HOST_STDLIB_DIR"; exit 1; \
+		fi; \
 	fi
 
 setup-rust: build-rust-sysroot ## Full Rust toolchain setup: clone, build rustc, build libcore for LX32
