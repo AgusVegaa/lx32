@@ -255,7 +255,7 @@ RUST_LX32_SYSROOT     := $(RUST_LX32_DIR)/build/$(RUST_HOST)/stage1
 PAC_DIR        := $(CURDIR)/tools/pulsar_pac
 RUST_PROGS_DIR := $(CURDIR)/tools/lx32_backend/tests/baremetal/rust_programs
 
-.PHONY: check-llvm install-backend build-backend setup-backend rebuild-llvm rebuild-rust-compiler rebuild-backend test-baremetal test-baremetal-deep compile-c run-binary bench-all bench-compile-tests bench-build-runner bench-run bench-summary check-rust build-rust-compiler build-rust-sysroot setup-rust build-firmware check-pac build-rust-firmware-tests test-rust-firmware dev-rust
+.PHONY: check-llvm install-backend build-backend setup-backend rebuild-llvm rebuild-rust-compiler rebuild-backend test-baremetal test-baremetal-deep compile-c run-binary bench-all bench-compile-tests bench-build-runner bench-run bench-summary check-rust ensure-rust-bootstrap build-rust-compiler build-rust-sysroot setup-rust build-firmware check-pac build-rust-firmware-tests test-rust-firmware dev-rust
 
 check-llvm: ## Check LLVM, clone if missing
 	@if [ -d "$(LLVM_DIR)/.git" ]; then \
@@ -305,7 +305,7 @@ rebuild-llvm: ## Incremental LLVM rebuild after backend source changes (fast —
 	@ninja -C $(LLVM_DIR)/build -j$(NPROC)
 	@echo "✓ LLVM rebuilt"
 
-rebuild-rust-compiler: ## Force-rebuild stage1 rustc after LLVM changes (relinks against the new LLVM)
+rebuild-rust-compiler: ensure-rust-bootstrap ## Force-rebuild stage1 rustc after LLVM changes (relinks against the new LLVM)
 	@if [ ! -d "$(RUST_LX32_DIR)/.git" ]; then \
 		echo "ERROR: rust-lx32 not found. Run: make check-rust"; exit 1; \
 	fi
@@ -344,7 +344,30 @@ check-rust: ## Check if rust-lx32 fork is cloned; clone if missing
 		echo "✓ rust-lx32 cloned"; \
 	fi
 
-build-rust-compiler: check-rust ## Build the custom stage1 rustc for LX32 (~20-40 min first time)
+ensure-rust-bootstrap: check-rust ## Configure rust-lx32 bootstrap.toml to use local LX32 LLVM
+	@if [ ! -f "$(LLVM_DIR)/build/bin/llvm-config" ]; then \
+		echo "ERROR: LLVM not built. Run: make setup-backend"; exit 1; \
+	fi
+	@BOOTSTRAP="$(RUST_LX32_DIR)/bootstrap.toml"; \
+	echo "→ Writing rust-lx32 bootstrap.toml (project template)"; \
+	printf '%s\n' \
+		'change-id = "ignore"' \
+		'' \
+		'[build]' \
+		'description = "lx32-custom-compiler"' \
+		'' \
+		'[rust]' \
+		'channel = "nightly"' \
+		'download-rustc = false' \
+		'' \
+		'[target.$(RUST_HOST)]' \
+		'llvm-config = "$(LLVM_DIR)/build/bin/llvm-config"' \
+		'' \
+		'[llvm]' \
+		'download-ci-llvm = false' > "$$BOOTSTRAP"; \
+	echo "✓ bootstrap.toml configured: $$BOOTSTRAP"
+
+build-rust-compiler: check-rust ensure-rust-bootstrap ## Build the custom stage1 rustc for LX32 (~20-40 min first time)
 	@RUSTC_OK=0; \
 	if [ -f "$(RUST_LX32_RUSTC)" ]; then \
 		if "$(RUST_LX32_RUSTC)" --target lx32-unknown-none-elf --print cfg >/dev/null 2>&1; then \
