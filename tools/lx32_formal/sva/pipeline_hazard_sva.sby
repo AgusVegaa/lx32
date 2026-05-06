@@ -1,0 +1,13 @@
+[options]
+mode bmc
+depth 20
+
+[engines]
+smtbmc z3
+
+[script]
+read -formal -sv pipeline_hazard_sva.sv
+prep -top pipeline_hazard_sva
+
+[files]
+tools/lx32_formal/sva/pipeline_hazard_sva.sv

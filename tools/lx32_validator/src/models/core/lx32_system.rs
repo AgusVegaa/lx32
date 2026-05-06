@@ -173,10 +173,24 @@ impl Lx32System {
         // `rtl/core/sensor_controller.sv` exactly for differential testing to
         // be meaningful.
         let sensor_idx  = (rs1_data & 0x3F) as u32;
-        let sensor_val  = 1000u32 + sensor_idx;       // stub: index + 1000
-        let delta_val   = 20u32;                       // stub: constant 20
-        let matrix_ptr  = 0x5000_0000u32;              // stub: fixed snapshot base
-        let active_keys = 0x0000_00FFu32;              // stub: keys 0-7 active
+        // Both frame_buf buffers are pre-loaded with the converged ADC model values
+        // on reset (sensor_controller.sv), making sensor_val deterministic from
+        // cycle 0 and delta_val = 0 throughout simulation.
+        // ADC model: idx < 8 → 1200, idx >= 8 → 800 + idx
+        let sensor_val  = if sensor_idx < 8 { 1200u32 } else { 800u32 + sensor_idx };
+        let delta_val   = 0u32;
+        // write_sel flips every 64 RTL clocks; tick_core fires 2 clocks per step.
+        // LX.MATRIX executes on pulse 2, so it sees write_sel from after pulse 1
+        // (RTL clock 2N-1).  After RTL clock K: write_sel = floor(K/64) % 2.
+        // After pulse 1 of step N (clock 2N-1): write_sel = floor((2N-1)/64) % 2
+        //   = floor((cycles_total - 1) / 32) % 2.
+        // write_sel=0 → CPU reads frame_buf[1] → SENSOR_DATA_BASE + SENSOR_BUF_HALF
+        // write_sel=1 → CPU reads frame_buf[0] → SENSOR_DATA_BASE
+        let write_sel   = ((self.cycles_total - 1) / 32) % 2 == 1;
+        let matrix_ptr  = if write_sel { 0x5000_0000u32 } else { 0x5000_8000u32 };
+        // active_keys: all keys < 8 have sensor_val=1200 > press_threshold=1000 → active
+        let active_keys = 0x0000_00FFu32;              // keys 0-7 active (1200 > 1000)
+        // chord: active_keys=0 in sim, so only bitmask=0 matches
         let chord_match = u32::from((active_keys & rs1_data) == rs1_data);
 
         // ── 7. Execute ────────────────────────────────────────────────────────

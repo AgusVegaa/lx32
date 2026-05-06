@@ -13,10 +13,12 @@ tablegen(LLVM LX32GenAsmMatcher.inc -gen-asm-matcher)
 tablegen(LLVM LX32GenSubtargetInfo.inc -gen-subtarget)
 tablegen(LLVM LX32GenCallingConv.inc -gen-callingconv)
 tablegen(LLVM LX32GenDAGISel.inc -gen-dag-isel)
+tablegen(LLVM LX32GenDisassemblerTables.inc -gen-disassembler)
 
 add_public_tablegen_target(LX32CommonTableGen)
 
 add_subdirectory(TargetInfo)
 add_subdirectory(MCTargetDesc)
 add_subdirectory(AsmParser)
+add_subdirectory(Disassembler)
 add_subdirectory(core)

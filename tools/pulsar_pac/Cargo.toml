@@ -29,12 +29,18 @@ rt = []
 
 # ── Examples ──────────────────────────────────────────────────────────────────
 [[example]]
+name = "calibrate"
+
+[[example]]
 name = "keyboard"
+
+[[example]]
+name = "latency"
 
 # ── Profiles ──────────────────────────────────────────────────────────────────
 [profile.release]
 # Firmware lives in 4KB RAM — every byte counts.
-opt-level     = "z"    # size-optimized
+opt-level     = "s"    # size-optimized (balanced)
 lto           = true   # link-time optimization across all crates
 panic         = "abort"
 codegen-units = 1      # single CGU for maximum LTO effectiveness

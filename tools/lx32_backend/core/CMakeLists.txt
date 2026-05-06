@@ -28,6 +28,7 @@ add_llvm_component_library(LLVMLX32CodeGen
   LX32ISelDAGToDAG.cpp
   LX32InstrInfo.cpp
   LX32ISelLowering.cpp
+  LX32PeepholePass.cpp
   LX32RegisterInfo.cpp
   LX32Subtarget.cpp
   LX32TargetMachine.cpp

@@ -178,18 +178,29 @@ fn main() {
         }
 
         // ── Load data ──────────────────────────────────────────────────────
-        let mem_rdata = {
-            let aligned = (mem_addr as usize) & !3;
-            if aligned + 4 <= memory.len() {
+        // For LOAD instructions (opcode=0x03) we must NOT use get_mem_addr():
+        // that returns s_mem_addr snapshotted from the PREVIOUS tick_core.
+        // After a JALR, s_mem_addr holds the jump target (the ALU result),
+        // not the subsequent LW's base+offset — feeding it as mem_rdata
+        // corrupts the destination register.  Decode rs1/imm12 directly and
+        // read the register file, which already reflects post-JALR state.
+        let mem_rdata = if instr & 0x7F == 0x03 {
+            let rs1 = ((instr >> 15) & 0x1F) as u8;
+            let imm = (instr as i32) >> 20;   // arithmetic shift sign-extends
+            let base = unsafe { get_reg(core, rs1) };
+            let load_addr = (base.wrapping_add(imm as u32) as usize) & !3;
+            if load_addr + 4 <= memory.len() {
                 u32::from_le_bytes([
-                    memory[aligned],
-                    memory[aligned + 1],
-                    memory[aligned + 2],
-                    memory[aligned + 3],
+                    memory[load_addr],
+                    memory[load_addr + 1],
+                    memory[load_addr + 2],
+                    memory[load_addr + 3],
                 ])
             } else {
                 0
             }
+        } else {
+            0   // non-load instructions ignore mem_rdata in the RTL
         };
 
         // ── Clock edge ─────────────────────────────────────────────────────

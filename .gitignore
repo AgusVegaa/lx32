@@ -44,6 +44,10 @@ tools/lx32_backend/build/
 *.s
 *.ll
 bench_results.json
+bench_firmware_results.json
 **/target/
 **/*.bak
 *.lock
+
+# Claude Code internal state
+.claude/

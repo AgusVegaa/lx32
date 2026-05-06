@@ -6,17 +6,16 @@ module memory_sim (
   input  logic        clk,
 
   // ------------------------------------------------------------
-  // Instruction Port (Read-Only)
+  // Instruction Port (Read-Only, IRAM — 32 KiB at 0x0000_0000)
   // ------------------------------------------------------------
-  /* verilator lint_off UNUSEDSIGNAL */
   input  logic [31:0] i_addr,
   output logic [31:0] i_data,
 
   // ------------------------------------------------------------
-  // Data Port
+  // Data Port (DRAM — 64 KiB at 0x0001_0000; test mode maps to
+  // the same flat array for programs smaller than 4 KiB)
   // ------------------------------------------------------------
   input  logic [31:0] d_addr,
-  /* verilator lint_on UNUSEDSIGNAL */
   input  logic [31:0] d_wdata,
   input  logic        d_we,
   output logic [31:0] d_rdata
@@ -26,74 +25,80 @@ module memory_sim (
   // ============================================================
   // LX32 Simulation Memory
   // ============================================================
-  // Dual-port memory model for LX32 base core simulation.
   //
-  // Features:
-  //   - 4 KB total memory (1024 x 32-bit words)
-  //   - Word-aligned addressing
-  //   - Asynchronous read
-  //   - Synchronous write
-  //   - Program preload via $readmemh
+  // Two separate BRAM arrays model the real hardware memory map:
+  //   iram: 8192 words × 32-bit = 32 KiB  (0x0000_0000–0x0000_7FFF)
+  //   dram: 16384 words × 32-bit = 64 KiB  (0x0001_0000–0x0001_FFFF)
   //
-  // Design Principles:
-  //   - Tool-friendly (no latches)
-  //   - Deterministic behavior
-  //   - ISA-aligned word indexing
-  //   - Clean separation of instruction/data ports
+  // Test-mode compatibility:
+  //   The run_program simulator loads a flat binary at address 0 and
+  //   uses only the lower 12 bits for both instruction and data accesses
+  //   (programs fit in 4 KiB).  The simulation transparently falls back to
+  //   the iram array for data accesses that hit the IRAM region so that
+  //   the existing 4 KiB single-region programs continue to work without
+  //   relinking.
+  //
+  // Address decode:
+  //   Instruction port: always indexes iram (bits[14:2] for 32 KiB).
+  //   Data port:
+  //     addr[31:16] == 0x0000 → iram  (IRAM region or test-mode flat binary)
+  //     addr[31:16] == 0x0001 → dram  (DRAM region)
+  //     otherwise             → returns 0 (MMIO handled upstream)
   // ============================================================
 
+  localparam IRAM_WORDS = 8192;   // 32 KiB / 4 bytes
+  localparam DRAM_WORDS = 16384;  // 64 KiB / 4 bytes
 
-  // ------------------------------------------------------------
-  // Memory Array
-  // ------------------------------------------------------------
-  logic [31:0] ram [0:1023];
-
+  logic [31:0] iram [0:IRAM_WORDS-1];
+  logic [31:0] dram [0:DRAM_WORDS-1];
 
   // ------------------------------------------------------------
   // Initialization
   // ------------------------------------------------------------
   initial begin
-    integer i;
-    integer program_fd;
+    integer fd;
+    for (int i = 0; i < IRAM_WORDS; i++) iram[i] = 32'h0;
+    for (int i = 0; i < DRAM_WORDS; i++) dram[i] = 32'h0;
 
-    for (i = 0; i < 1024; i++)
-      ram[i] = 32'b0;
-
-    // Load an external image only when available; otherwise keep zeroed memory.
-    program_fd = $fopen("program.hex", "r");
-    if (program_fd != 0) begin
-      $fclose(program_fd);
-      $readmemh("program.hex", ram);
+    fd = $fopen("program.hex", "r");
+    if (fd != 0) begin
+      $fclose(fd);
+      $readmemh("program.hex", iram);  // test binaries load into IRAM
     end
   end
 
+  // ------------------------------------------------------------
+  // Instruction Port — IRAM, word-aligned
+  // ------------------------------------------------------------
+  logic [12:0] i_index;
+  assign i_index = i_addr[14:2];   // 13-bit word index into 32 KiB
+  assign i_data  = iram[i_index];
 
   // ------------------------------------------------------------
-  // Word-Aligned Address Decode
+  // Data Port — address-decoded, word-aligned
   // ------------------------------------------------------------
-  // LX32 base instructions are 32-bit aligned.
-  // Bits [1:0] are ignored.
-  // ------------------------------------------------------------
-  logic [9:0] i_index;
-  logic [9:0] d_index;
+  logic        d_in_iram, d_in_dram;
+  logic [12:0] d_iram_idx;
+  logic [13:0] d_dram_idx;
 
-  assign i_index = i_addr[11:2];
-  assign d_index = d_addr[11:2];
+  assign d_in_iram  = (d_addr[31:15] == 17'h0);          // 0x0000_0000–0x0000_7FFF
+  assign d_in_dram  = (d_addr[31:16] == 16'h0001);        // 0x0001_0000–0x0001_FFFF
+  assign d_iram_idx = d_addr[14:2];
+  assign d_dram_idx = d_addr[15:2];
 
+  // Asynchronous read.
+  always_comb begin
+    if      (d_in_iram) d_rdata = iram[d_iram_idx];
+    else if (d_in_dram) d_rdata = dram[d_dram_idx];
+    else                d_rdata = 32'h0;
+  end
 
-  // ------------------------------------------------------------
-  // Asynchronous Read
-  // ------------------------------------------------------------
-  assign i_data  = ram[i_index];
-  assign d_rdata = ram[d_index];
-
-
-  // ------------------------------------------------------------
-  // Synchronous Write
-  // ------------------------------------------------------------
+  // Synchronous write.
   always_ff @(posedge clk) begin
-    if (d_we)
-      ram[d_index] <= d_wdata;
+    if (d_we) begin
+      if      (d_in_iram) iram[d_iram_idx] <= d_wdata;
+      else if (d_in_dram) dram[d_dram_idx] <= d_wdata;
+    end
   end
 
 endmodule

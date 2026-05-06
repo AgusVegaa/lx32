@@ -16,7 +16,7 @@ RTL_CORE := rtl/core
 RTL_ARCH := rtl/arch
 TB_CORE  := tb/core
 
-.PHONY: help sim clean setup librust validate validate-verbose validate-long validate-long-verbose validate-seed validate-long-custom validate-help coq-only coq-check coq-local coq-clean formal-validate closure-proof formal-help formal-clean formal-sva formal-sva-control formal-sva-rf formal-lec formal-lec-alu formal-lec-branch formal-all
+.PHONY: help sim clean setup librust validate validate-verbose validate-long validate-long-verbose validate-seed validate-long-custom validate-help coq-only coq-check coq-local coq-clean formal-validate closure-proof formal-help formal-clean formal-sva formal-sva-control formal-sva-rf formal-sva-pipeline formal-sva-dma formal-sva-rt formal-lec formal-lec-alu formal-lec-branch formal-all bench-firmware bench-firmware-run
 
 # Verilator include path detection (Linux vs macOS)
 UNAME_S := $(shell uname -s)
@@ -38,7 +38,9 @@ librust:
 	@test -d "$(LIB_OUTDIR)"
 	@test -w "$(LIB_OUTDIR)"
 	# 1. Generate C++ files
-	$(VERILATOR) -Wall --cc \
+	$(VERILATOR) -Wall \
+		-Wno-UNUSEDPARAM -Wno-UNUSEDSIGNAL \
+		--cc --assert \
 		--Mdir $(LIB_OUTDIR) \
 		rtl/arch/*.sv \
 		rtl/core/*.sv \
@@ -175,6 +177,9 @@ formal-help: ## Show hardware formal targets (SVA+BMC and LEC)
 	@echo "formal-sva           - Run all SVA bounded model checks"
 	@echo "formal-sva-control   - Run control unit SVA checks"
 	@echo "formal-sva-rf        - Run register file SVA checks"
+	@echo "formal-sva-pipeline  - Run pipeline hazard SVA checks"
+	@echo "formal-sva-dma       - Run DMA controller FSM SVA checks"
+	@echo "formal-sva-rt        - Run rapid-trigger hysteresis SVA checks"
 	@echo "formal-lec           - Run all Yosys equivalence checks"
 	@echo "formal-lec-alu       - Run ALU equivalence check"
 	@echo "formal-lec-branch    - Run Branch Unit equivalence check"
@@ -185,7 +190,7 @@ formal-help: ## Show hardware formal targets (SVA+BMC and LEC)
 formal-clean: ## Remove formal verification artifacts
 	@rm -rf $(FORMAL_OUT)
 
-formal-sva: formal-sva-control formal-sva-rf ## Run all SVA bounded model checks
+formal-sva: formal-sva-control formal-sva-rf formal-sva-pipeline formal-sva-dma formal-sva-rt ## Run all SVA bounded model checks
 
 formal-sva-control: ## Run control unit SVA checks (SymbiYosys)
 	@if ! command -v $(SBY) >/dev/null 2>&1; then echo "ERROR: $(SBY) not found"; exit 2; fi
@@ -196,6 +201,21 @@ formal-sva-rf: ## Run register file temporal SVA checks (SymbiYosys)
 	@if ! command -v $(SBY) >/dev/null 2>&1; then echo "ERROR: $(SBY) not found"; exit 2; fi
 	@mkdir -p $(FORMAL_OUT)
 	$(SBY) -f -d $(FORMAL_OUT)/register_file_sva $(SVA_DIR)/register_file_sva.sby
+
+formal-sva-pipeline: ## Run 2-stage pipeline hazard SVA checks (SymbiYosys)
+	@if ! command -v $(SBY) >/dev/null 2>&1; then echo "ERROR: $(SBY) not found"; exit 2; fi
+	@mkdir -p $(FORMAL_OUT)
+	$(SBY) -f -d $(FORMAL_OUT)/pipeline_hazard_sva $(SVA_DIR)/pipeline_hazard_sva.sby
+
+formal-sva-dma: ## Run DMA controller FSM SVA checks (SymbiYosys)
+	@if ! command -v $(SBY) >/dev/null 2>&1; then echo "ERROR: $(SBY) not found"; exit 2; fi
+	@mkdir -p $(FORMAL_OUT)
+	$(SBY) -f -d $(FORMAL_OUT)/dma_controller_sva $(SVA_DIR)/dma_controller_sva.sby
+
+formal-sva-rt: ## Run rapid-trigger hysteresis SVA checks (SymbiYosys)
+	@if ! command -v $(SBY) >/dev/null 2>&1; then echo "ERROR: $(SBY) not found"; exit 2; fi
+	@mkdir -p $(FORMAL_OUT)
+	$(SBY) -f -d $(FORMAL_OUT)/rapid_trigger_sva $(SVA_DIR)/rapid_trigger_sva.sby
 
 formal-lec: formal-lec-alu formal-lec-branch ## Run all Yosys equivalence checks
 
@@ -295,6 +315,7 @@ rebuild-rust-compiler: ## Force-rebuild stage1 rustc after LLVM changes (relinks
 	@echo "→ Rebuilding stage1 rustc against updated LLVM..."
 	@echo "   (LIBRARY_PATH=/opt/homebrew/lib for Homebrew zstd)"
 	@echo "   This takes a few minutes (incremental relink, not full rebuild)"
+	@touch "$(RUST_LX32_DIR)/compiler/rustc_llvm/build.rs"
 	@cd "$(RUST_LX32_DIR)" && \
 		LIBRARY_PATH=/opt/homebrew/lib \
 		python3 x.py build compiler --stage 1
@@ -522,12 +543,77 @@ bench-run: ## Run all compiled .bin files through the RTL runner and write $(BEN
 	printf '\n]\n' >> $(BENCH_REPORT)
 	@echo "✓ Results written to $(BENCH_REPORT)"
 
-bench-all: librust bench-build-runner bench-compile-tests bench-run ## Full benchmark pipeline: compile + run + report
+bench-all: librust bench-build-runner bench-compile-tests bench-run bench-firmware ## Full benchmark pipeline: C + Rust firmware, produces both report files
 	@echo ""
 	@echo "=== Benchmark complete ==="
-	@echo "  Report : $(BENCH_REPORT)"
-	@echo "  Programs: $$(grep -c '\"program\"' $(BENCH_REPORT) 2>/dev/null || echo 0)"
-	@echo "  Run: make bench-summary  to view results table"
+	@echo "  C report      : $(BENCH_REPORT)"
+	@echo "  Firmware report: $(FIRMWARE_BENCH_REPORT)"
+	@echo "  Run: make bench-summary          (C programs)"
+	@echo "       make bench-firmware-summary (Rust firmware)"
 
 bench-summary: ## Print a human-readable summary table from the last bench-all run
 	@python3 tools/bench_summary.py $(BENCH_REPORT)
+
+bench-summary-50mhz: ## Print summary with 50 MHz latency column (default clock)
+	@python3 tools/bench_summary.py $(BENCH_REPORT) --clock-mhz 50
+
+# ── Rust firmware benchmarks ──────────────────────────────────────────────────
+# bench-firmware     Build + run the Rust firmware examples and append to report
+# bench-firmware-run Run pre-built Rust firmware .bin files through the runner
+FIRMWARE_BENCH_BINS := \
+	$(PAC_DIR)/target/lx32-unknown-none-elf/release/examples/keyboard.bin \
+	$(PAC_DIR)/target/lx32-unknown-none-elf/release/examples/latency.bin \
+	$(PAC_DIR)/target/lx32-unknown-none-elf/release/examples/frame_budget.bin
+
+FIRMWARE_BENCH_REPORT := bench_firmware_results.json
+
+bench-firmware: librust bench-build-runner build-rust-sysroot ## Build + run Rust firmware examples through RTL bench
+	@if [ ! -f "$(RUST_LX32_RUSTC)" ]; then \
+		echo "ERROR: Custom rustc not found. Run: make setup-rust"; exit 1; \
+	fi
+	@echo "→ Building Rust firmware examples for benchmarking..."
+	@$(LX32_LLVM_BIN)/llvm-mc -arch=lx32 -filetype=obj \
+		$(BACKEND_SRC)/tests/baremetal/crt0.S \
+		-o $(BACKEND_SRC)/tests/baremetal/crt0.o
+	@for ex in keyboard latency frame_budget; do \
+		echo "  → Building example: $$ex"; \
+		cd "$(PAC_DIR)" && \
+			RUSTC="$(RUST_LX32_RUSTC)" \
+			RUSTC_BOOTSTRAP=1 \
+			RUSTFLAGS="-C jump-tables=no -C link-arg=-T$(BACKEND_SRC)/tests/baremetal/link.ld -C link-arg=$(BACKEND_SRC)/tests/baremetal/crt0.o" \
+			"$(RUST_LX32_STAGE0_CARGO)" build --release \
+				--target lx32-unknown-none-elf \
+				-Z build-std=core,compiler_builtins \
+				-Z build-std-features=compiler-builtins-mem \
+				--example $$ex && \
+		$(LX32_LLVM_BIN)/llvm-objcopy -O binary \
+			"$(PAC_DIR)/target/lx32-unknown-none-elf/release/examples/$$ex" \
+			"$(PAC_DIR)/target/lx32-unknown-none-elf/release/examples/$$ex.bin" || true; \
+	done
+	@$(MAKE) bench-firmware-run
+
+bench-firmware-summary: ## Print a human-readable table from the last bench-firmware run
+	@python3 tools/bench_summary.py $(FIRMWARE_BENCH_REPORT) --clock-mhz 50
+
+bench-firmware-run: ## Run pre-built Rust firmware .bin files, write $(FIRMWARE_BENCH_REPORT)
+	@if [ ! -x "$(BENCH_RUNNER)" ]; then \
+		echo "ERROR: runner not built — run: make bench-build-runner"; exit 1; \
+	fi
+	@echo "→ Running Rust firmware benchmarks..."
+	@printf '[\n' > $(FIRMWARE_BENCH_REPORT); \
+	first=1; \
+	for bin in $(FIRMWARE_BENCH_BINS); do \
+		test -f "$$bin" || { echo "  SKIP (not built): $$bin"; continue; }; \
+		name=$$(basename "$$bin"); \
+		printf "  %-44s" "$$name"; \
+		if [ "$$first" = "0" ]; then printf ',\n' >> $(FIRMWARE_BENCH_REPORT); fi; \
+		if "$(BENCH_RUNNER)" --binary "$$bin" --json >> $(FIRMWARE_BENCH_REPORT) 2>/dev/null; then \
+			printf " ✓\n"; \
+		else \
+			printf " ✗ (runner error)\n"; \
+		fi; \
+		first=0; \
+	done; \
+	printf '\n]\n' >> $(FIRMWARE_BENCH_REPORT)
+	@echo "✓ Firmware results written to $(FIRMWARE_BENCH_REPORT)"
+	@python3 tools/bench_summary.py $(FIRMWARE_BENCH_REPORT) --clock-mhz 50

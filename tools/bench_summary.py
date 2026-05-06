@@ -15,7 +15,15 @@ import os
 
 
 def main():
-    report_path = sys.argv[1] if len(sys.argv) > 1 else "bench_results.json"
+    import argparse
+    ap = argparse.ArgumentParser(description="Pretty-print bench_results.json")
+    ap.add_argument("report", nargs="?", default="bench_results.json",
+                    help="Path to bench_results.json (default: bench_results.json)")
+    ap.add_argument("--clock-mhz", type=float, default=50.0, metavar="MHZ",
+                    help="Clock frequency in MHz for latency column (default: 50)")
+    args = ap.parse_args()
+    report_path = args.report
+    clock_mhz   = args.clock_mhz
 
     if not os.path.exists(report_path):
         print(f"No benchmark results found at '{report_path}'.")
@@ -36,11 +44,12 @@ def main():
     # ── Header ────────────────────────────────────────────────────────────────
     HDR = (
         f"{'Program':<32} {'Status':<16} {'Bytes':>6} {'S.Instr':>8}"
-        f" {'Cycles':>8} {'D.Instr':>8} {'Stalls':>7} {'IPC':>7}  {'Exit':>5}"
+        f" {'Cycles':>8} {'D.Instr':>8} {'Stalls':>7} {'IPC':>7}"
+        f"  {'Lat(µs)':>9}  {'Exit':>5}"
     )
     SEP = "─" * len(HDR)
 
-    print(f"\n=== LX32 Benchmark Results  ({report_path}) ===\n")
+    print(f"\n=== LX32 Benchmark Results  ({report_path}, clock={clock_mhz} MHz) ===\n")
     print(HDR)
     print(SEP)
 
@@ -56,16 +65,19 @@ def main():
         ipc    = r.get("ipc",                    0.0)
         ec     = r.get("exit_code",              None)
         ec_str = str(ec) if ec is not None else "—"
+        lat_us = cyc / (clock_mhz * 1e6) * 1e6 if cyc > 0 else 0.0
 
         print(
             f"{name:<32} {status:<16} {bsz:>6} {sinstr:>8}"
-            f" {cyc:>8} {dinstr:>8} {stalls:>7} {ipc:>7.4f}  {ec_str:>5}"
+            f" {cyc:>8} {dinstr:>8} {stalls:>7} {ipc:>7.4f}"
+            f"  {lat_us:>9.3f}  {ec_str:>5}"
         )
 
     print(SEP)
     print(
         "\nColumns: S.Instr = static instruction count (binary_bytes / 4)  |"
-        "  D.Instr = dynamic instructions committed  |  IPC = D.Instr / Cycles"
+        "  D.Instr = dynamic instructions committed  |  IPC = D.Instr / Cycles  |"
+        f"  Lat = Cycles / ({clock_mhz} MHz)"
     )
 
     # ── Instruction mix breakdown ─────────────────────────────────────────────
@@ -86,11 +98,14 @@ def main():
     total_stall = sum(r.get("stall_cycles",           0) for r in results)
     agg_ipc     = total_din / total_cyc if total_cyc > 0 else 0.0
 
+    total_lat_us = total_cyc / (clock_mhz * 1e6) * 1e6 if total_cyc > 0 else 0.0
+
     print(f"\nAggregate across {len(results)} program(s):")
     print(f"  Total cycles         : {total_cyc:,}")
     print(f"  Total D. instructions: {total_din:,}")
     print(f"  Total stall cycles   : {total_stall:,}")
     print(f"  Aggregate IPC        : {agg_ipc:.4f}")
+    print(f"  Total latency        : {total_lat_us:.3f} µs  (@{clock_mhz} MHz)")
     if total_cyc > 0:
         stall_pct = total_stall / total_cyc * 100
         print(f"  Stall overhead       : {stall_pct:.2f}%")

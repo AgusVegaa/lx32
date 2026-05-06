@@ -8,6 +8,7 @@
 #include "LX32InstrInfo.h"
 #include "LX32TargetMachine.h"
 
+#include "../MCTargetDesc/LX32MCInstPrinter.h"
 #include "../TargetInfo/LX32TargetInfo.h"
 
 #include "llvm/CodeGen/AsmPrinter.h"
@@ -124,6 +125,26 @@ public:
       : AsmPrinter(TM, std::move(Streamer)), MCILower(*this, OutContext) {}
 
   StringRef getPassName() const override { return "LX32 Assembly Printer"; }
+
+  bool PrintAsmOperand(const MachineInstr *MI, unsigned OpNo,
+                       const char *ExtraCode, raw_ostream &O) override {
+    // Let the base class handle modifiers like 'c' and 'n'.
+    if (!AsmPrinter::PrintAsmOperand(MI, OpNo, ExtraCode, O))
+      return false;
+    // With no modifier, emit the register or immediate directly.
+    if (!ExtraCode) {
+      const MachineOperand &MO = MI->getOperand(OpNo);
+      if (MO.isReg()) {
+        O << LX32GetAsmRegName(MO.getReg());
+        return false;
+      }
+      if (MO.isImm()) {
+        O << MO.getImm();
+        return false;
+      }
+    }
+    return true; // unknown modifier or operand type
+  }
 
   void emitInstruction(const MachineInstr *MI) override {
     LLVM_DEBUG({

@@ -49,7 +49,7 @@ impl Default for ProgramConfig {
             enable_alu: true,
             enable_jumps: true,
             enable_upper_imm: true,
-            enable_custom: false,
+            enable_custom: true,
         }
     }
 }
@@ -340,21 +340,23 @@ impl Program {
                 }
             }
             4 => {
-                // LX.WAIT rs1  — stall for rs1 cycles (rd=x0, no result)
-                let rs1 = rng.random_range(0u8..32);
+                // LX.WAIT x0  — 0 stall cycles (no-op in the test framework).
+                // Always use rs1=x0 so the debug_stall bridge doesn't have to
+                // drain a real multi-cycle stall.  The instruction still exercises
+                // the CUSTOM-1/funct3=000 decode path.
                 Instruction {
-                    encoding: ((rs1 as u32) << 15) | (0x0 << 12) | 0x2B,
-                    mnemonic: format!("LX.WAIT x{}", rs1),
-                    rd: None, rs1: Some(rs1), rs2: None, imm: None,
+                    encoding: (0x0 << 12) | 0x2B,
+                    mnemonic: "LX.WAIT x0".to_string(),
+                    rd: None, rs1: Some(0), rs2: None, imm: None,
                 }
             }
             _ => {
-                // LX.REPORT rs1  — DMA report-buffer flush from address in rs1 (rd=x0)
-                let rs1 = rng.random_range(0u8..32);
+                // LX.REPORT x0  — DMA flush from address 0 (safe in simulation:
+                // DMA runs in background; only stalls a follow-up LX.REPORT).
                 Instruction {
-                    encoding: ((rs1 as u32) << 15) | (0x1 << 12) | 0x2B,
-                    mnemonic: format!("LX.REPORT x{}", rs1),
-                    rd: None, rs1: Some(rs1), rs2: None, imm: None,
+                    encoding: (0x0 << 15) | (0x1 << 12) | 0x2B,
+                    mnemonic: "LX.REPORT x0".to_string(),
+                    rd: None, rs1: Some(0), rs2: None, imm: None,
                 }
             }
         }
@@ -400,5 +402,4 @@ impl Program {
         output
     }
 }
-
 

@@ -32,5 +32,6 @@ fi
 "$TBLGEN" -gen-emitter LX32.td -I "$INCLUDE" -I . -o LX32GenMCCodeEmitter.inc
 "$TBLGEN" -gen-asm-matcher LX32.td -I "$INCLUDE" -I . -o LX32GenAsmMatcher.inc
 "$TBLGEN" -gen-asm-writer LX32.td -I "$INCLUDE" -I . -o LX32GenAsmWriter.inc
+"$TBLGEN" -gen-disassembler LX32.td -I "$INCLUDE" -I . -o LX32GenDisassemblerTables.inc
 
 echo "TableGen: all .inc files generated successfully."
