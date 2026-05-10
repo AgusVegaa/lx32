@@ -1,0 +1,8 @@
+(sym_lib_table
+	(version 7)
+	(lib (name "XC7A200T_A1") (type "KiCad") (uri "/Users/axel/route/Pulsar/pcb/libs/symbols") (options "") (descr ""))
+	(lib (name "XC7A200T_B2") (type "KiCad") (uri "/Users/axel/route/Pulsar/pcb/libs/symbols") (options "") (descr ""))
+	(lib (name "XC7A200T_C3") (type "KiCad") (uri "/Users/axel/route/Pulsar/pcb/libs/symbols") (options "") (descr ""))
+	(lib (name "XC7A200T_D4") (type "KiCad") (uri "/Users/axel/route/Pulsar/pcb/libs/symbols") (options "") (descr ""))
+	(lib (name "XC7A200T_E5") (type "KiCad") (uri "/Users/axel/route/Pulsar/pcb/libs/symbols") (options "") (descr ""))
+)
