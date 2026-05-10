@@ -416,7 +416,7 @@
         "uuid": "60c284f0-e6d7-47fc-9b46-38b478ecbf26"
       }
     ],
-    "used_designators": "R_top1-2,R_bot1-2,R1,L1-3,U1-7,#FLG1,C1-12,#PWR1-91",
+    "used_designators": "R_top1-2,R_bot1-2,R1,L1-3,U1-8,#FLG1,C1-12,#PWR1-119",
     "variants": []
   },
   "sheets": [
@@ -450,23 +450,15 @@
     ],
     [
       "c6b8ec7d-4f82-4661-805c-6315d4ccf434",
-      "A1 (MGT, clock)"
+      "full FPGA"
     ],
     [
       "6cd25839-1866-413e-94ae-42602e6002e9",
-      "B2 (IO bank 1)"
+      "FPGA_Decoupling"
     ],
     [
       "4cad9ef6-06f7-466c-864b-5a1369c0f05c",
-      "C3 (IO bank 2)"
-    ],
-    [
-      "01ab3b6e-41af-4e2d-9bba-fde0776a72ba",
-      "D4 (IO bank 3)"
-    ],
-    [
-      "6244daa5-c92a-40cf-907f-d79486271ab2",
-      "E5 (power + config)"
+      "FPGA_Config"
     ]
   ],
   "text_variables": {},
