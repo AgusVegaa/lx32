@@ -1,8 +1,0 @@
-"Reference","Qty","Value","DNP","Exclude from BOM","Exclude from Board","Footprint","Datasheet","LCSC"
-"C1,C2","2","1uF","","","","Capacitor_SMD:C_0805_2012Metric","","C52923"
-"J3","1","USB_C_Receptacle","","","","Connector_USB:USB_C_Receptacle_GCT_USB4115-03-C","https://www.usb.org/sites/default/files/documents/usb_type-c.zip","C168688"
-"R_CC1,R_CC2","2","5.1k","","","","","","C23186"
-"U1","1","AP2112K-3.3","","","","Package_TO_SOT_SMD:SOT-23-5","https://www.diodes.com/assets/Datasheets/AP2112.pdf","C51118"
-"U2","1","SS49E","","","","Package_TO_SOT_THT:TO-92_Inline","","C85697"
-"U3","1","CD74HC4067M","","","","Package_SO:SSOP-24_5.3x8.2mm_P0.65mm","http://www.ti.com/lit/ds/symlink/cd74hc4067.pdf","C98457"
-"U4","1","ADS8688","","","","Package_SO:TSSOP-38_4.4x9.7mm_P0.5mm","http://www.ti.com/lit/ds/symlink/ads8688.pdf","C1542682"

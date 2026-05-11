@@ -1,0 +1,4 @@
+(fp_lib_table
+  (version 7)
+  (lib (name "XC7A200T") (type "KiCad") (uri "${KIPRJMOD}/../libs/footprints/XC7A200T.pretty") (options "") (descr "Xilinx Artix-7 XC7A200T BGA-484 footprint"))
+)
