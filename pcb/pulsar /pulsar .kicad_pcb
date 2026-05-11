@@ -44850,7 +44850,7 @@
 	(footprint "Device:C_0402"
 		(layer "B.Cu")
 		(uuid "00000000-0000-0000-0000-000000004163")
-		(at 262.0625 36.5)
+		(at 262.0625 39.5)
 		(property "Reference" "CB_H27"
 			(at 0 -2.8 0)
 			(unlocked yes)
