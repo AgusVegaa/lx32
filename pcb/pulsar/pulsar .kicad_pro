@@ -1,6 +1,7 @@
 {
   "board": {
     "3dviewports": [],
+    "allow_blind_buried_vias": true,
     "design_settings": {
       "defaults": {
         "apply_defaults_to_fp_barcodes": false,
@@ -661,7 +662,7 @@
         "uuid": "60c284f0-e6d7-47fc-9b46-38b478ecbf26"
       }
     ],
-    "used_designators": "L1-3,#PWR1-738,R_bot1-2,R_top1-2,C1-257,R1-71,J1-2,U1-92,Y1-2",
+    "used_designators": "",
     "variants": []
   },
   "sheets": [
