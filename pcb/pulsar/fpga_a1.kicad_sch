@@ -34,7 +34,7 @@
 					)
 				)
 			)
-			(property "Footprint" "FB484/FGB484/FGB484Artix-7_AMD"
+			(property "Footprint" "XC7A200T:XC7A200T_FBG484"
 				(at 0 0 0)
 				(show_name no)
 				(do_not_autoplace no)
@@ -90,7 +90,7 @@
 					)
 				)
 			)
-			(property "ki_fp_filters" "FB484/FGB484/FGB484Artix-7_AMD FB484/FGB484/FGB484Artix-7_AMD-M FB484/FGB484/FGB484Artix-7_AMD-L"
+			(property "ki_fp_filters" "XC7A200T_FBG484 XC7A200T_FBG484-M XC7A200T_FBG484-L"
 				(at 0 0 0)
 				(show_name no)
 				(do_not_autoplace no)
@@ -9732,7 +9732,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "0671d7fb-8633-4561-81cc-9c251f0b5e76")
-		(property "Reference" "#PWR063"
+		(property "Reference" "#PWR0549"
 			(at 200.66 120.65 0)
 			(hide yes)
 			(show_name no)
@@ -9793,7 +9793,7 @@
 		(instances
 			(project "pulsar "
 				(path "/60c284f0-e6d7-47fc-9b46-38b478ecbf26/80956d0d-0521-4a41-bffb-11a8f02bc21e/c6b8ec7d-4f82-4661-805c-6315d4ccf434"
-					(reference "#PWR063")
+					(reference "#PWR0549")
 					(unit 1)
 				)
 			)
@@ -9811,7 +9811,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "0a21fc33-08d1-45f1-9895-04ccbc24d259")
-		(property "Reference" "#PWR090"
+		(property "Reference" "#PWR0534"
 			(at 200.66 46.99 0)
 			(hide yes)
 			(show_name no)
@@ -9872,7 +9872,7 @@
 		(instances
 			(project "pulsar "
 				(path "/60c284f0-e6d7-47fc-9b46-38b478ecbf26/80956d0d-0521-4a41-bffb-11a8f02bc21e/c6b8ec7d-4f82-4661-805c-6315d4ccf434"
-					(reference "#PWR090")
+					(reference "#PWR0534")
 					(unit 1)
 				)
 			)
@@ -9890,7 +9890,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "0cf789cd-babe-49ce-b5d4-82c85af58cdb")
-		(property "Reference" "#PWR057"
+		(property "Reference" "#PWR0527"
 			(at 76.2 130.81 0)
 			(hide yes)
 			(show_name no)
@@ -9951,7 +9951,7 @@
 		(instances
 			(project "pulsar "
 				(path "/60c284f0-e6d7-47fc-9b46-38b478ecbf26/80956d0d-0521-4a41-bffb-11a8f02bc21e/c6b8ec7d-4f82-4661-805c-6315d4ccf434"
-					(reference "#PWR057")
+					(reference "#PWR0527")
 					(unit 1)
 				)
 			)
@@ -9969,7 +9969,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "10472b25-faf2-44a3-8380-0ad9b5b74ac2")
-		(property "Reference" "#PWR067"
+		(property "Reference" "#PWR0544"
 			(at 200.66 97.79 0)
 			(hide yes)
 			(show_name no)
@@ -10030,7 +10030,7 @@
 		(instances
 			(project "pulsar "
 				(path "/60c284f0-e6d7-47fc-9b46-38b478ecbf26/80956d0d-0521-4a41-bffb-11a8f02bc21e/c6b8ec7d-4f82-4661-805c-6315d4ccf434"
-					(reference "#PWR067")
+					(reference "#PWR0544")
 					(unit 1)
 				)
 			)
@@ -10048,7 +10048,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "1cb4f143-0e8c-4858-872c-9910592c0cd6")
-		(property "Reference" "#PWR064"
+		(property "Reference" "#PWR0548"
 			(at 200.66 118.11 0)
 			(hide yes)
 			(show_name no)
@@ -10109,7 +10109,7 @@
 		(instances
 			(project "pulsar "
 				(path "/60c284f0-e6d7-47fc-9b46-38b478ecbf26/80956d0d-0521-4a41-bffb-11a8f02bc21e/c6b8ec7d-4f82-4661-805c-6315d4ccf434"
-					(reference "#PWR064")
+					(reference "#PWR0548")
 					(unit 1)
 				)
 			)
@@ -10127,7 +10127,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "21e4493f-fa9d-4e6d-a771-465326e06226")
-		(property "Reference" "#PWR074"
+		(property "Reference" "#PWR0516"
 			(at 86.36 72.39 0)
 			(hide yes)
 			(show_name no)
@@ -10188,7 +10188,7 @@
 		(instances
 			(project "pulsar "
 				(path "/60c284f0-e6d7-47fc-9b46-38b478ecbf26/80956d0d-0521-4a41-bffb-11a8f02bc21e/c6b8ec7d-4f82-4661-805c-6315d4ccf434"
-					(reference "#PWR074")
+					(reference "#PWR0516")
 					(unit 1)
 				)
 			)
@@ -10206,7 +10206,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "2305dd8f-23de-4f62-a3d1-5b4571c11afc")
-		(property "Reference" "#PWR073"
+		(property "Reference" "#PWR0515"
 			(at 86.36 67.31 0)
 			(hide yes)
 			(show_name no)
@@ -10267,7 +10267,7 @@
 		(instances
 			(project "pulsar "
 				(path "/60c284f0-e6d7-47fc-9b46-38b478ecbf26/80956d0d-0521-4a41-bffb-11a8f02bc21e/c6b8ec7d-4f82-4661-805c-6315d4ccf434"
-					(reference "#PWR073")
+					(reference "#PWR0515")
 					(unit 1)
 				)
 			)
@@ -10285,7 +10285,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "2791b8e8-dae6-4726-9471-88c51e7231f9")
-		(property "Reference" "#PWR056"
+		(property "Reference" "#PWR0526"
 			(at 76.2 128.27 0)
 			(hide yes)
 			(show_name no)
@@ -10346,7 +10346,7 @@
 		(instances
 			(project "pulsar "
 				(path "/60c284f0-e6d7-47fc-9b46-38b478ecbf26/80956d0d-0521-4a41-bffb-11a8f02bc21e/c6b8ec7d-4f82-4661-805c-6315d4ccf434"
-					(reference "#PWR056")
+					(reference "#PWR0526")
 					(unit 1)
 				)
 			)
@@ -10364,7 +10364,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "28e9d9b8-94ce-4f72-9c29-0c1f20734062")
-		(property "Reference" "#PWR06"
+		(property "Reference" "#PWR0512"
 			(at 76.2 49.53 0)
 			(hide yes)
 			(show_name no)
@@ -10425,7 +10425,7 @@
 		(instances
 			(project "pulsar "
 				(path "/60c284f0-e6d7-47fc-9b46-38b478ecbf26/80956d0d-0521-4a41-bffb-11a8f02bc21e/c6b8ec7d-4f82-4661-805c-6315d4ccf434"
-					(reference "#PWR06")
+					(reference "#PWR0512")
 					(unit 1)
 				)
 			)
@@ -10443,7 +10443,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "292e7efc-c751-447a-8d73-2d82add6b760")
-		(property "Reference" "#PWR051"
+		(property "Reference" "#PWR0518"
 			(at 76.2 80.01 0)
 			(hide yes)
 			(show_name no)
@@ -10504,7 +10504,7 @@
 		(instances
 			(project "pulsar "
 				(path "/60c284f0-e6d7-47fc-9b46-38b478ecbf26/80956d0d-0521-4a41-bffb-11a8f02bc21e/c6b8ec7d-4f82-4661-805c-6315d4ccf434"
-					(reference "#PWR051")
+					(reference "#PWR0518")
 					(unit 1)
 				)
 			)
@@ -10522,7 +10522,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "2be30902-7f64-4602-b3ef-d59ed3fb8d88")
-		(property "Reference" "#PWR058"
+		(property "Reference" "#PWR0528"
 			(at 76.2 135.89 0)
 			(hide yes)
 			(show_name no)
@@ -10583,7 +10583,7 @@
 		(instances
 			(project "pulsar "
 				(path "/60c284f0-e6d7-47fc-9b46-38b478ecbf26/80956d0d-0521-4a41-bffb-11a8f02bc21e/c6b8ec7d-4f82-4661-805c-6315d4ccf434"
-					(reference "#PWR058")
+					(reference "#PWR0528")
 					(unit 1)
 				)
 			)
@@ -10601,7 +10601,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "2c1b0e80-fb4a-4bd4-93a2-549a0296599b")
-		(property "Reference" "#PWR054"
+		(property "Reference" "#PWR0523"
 			(at 76.2 105.41 0)
 			(hide yes)
 			(show_name no)
@@ -10662,7 +10662,7 @@
 		(instances
 			(project "pulsar "
 				(path "/60c284f0-e6d7-47fc-9b46-38b478ecbf26/80956d0d-0521-4a41-bffb-11a8f02bc21e/c6b8ec7d-4f82-4661-805c-6315d4ccf434"
-					(reference "#PWR054")
+					(reference "#PWR0523")
 					(unit 1)
 				)
 			)
@@ -10680,7 +10680,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "2fb88415-d4e3-4666-8c18-c245e57f8a12")
-		(property "Reference" "#PWR070"
+		(property "Reference" "#PWR0536"
 			(at 200.66 52.07 0)
 			(hide yes)
 			(show_name no)
@@ -10741,7 +10741,7 @@
 		(instances
 			(project "pulsar "
 				(path "/60c284f0-e6d7-47fc-9b46-38b478ecbf26/80956d0d-0521-4a41-bffb-11a8f02bc21e/c6b8ec7d-4f82-4661-805c-6315d4ccf434"
-					(reference "#PWR070")
+					(reference "#PWR0536")
 					(unit 1)
 				)
 			)
@@ -10759,7 +10759,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "347c1c42-ebce-4b0c-87da-02ecb3f787ad")
-		(property "Reference" "#PWR085"
+		(property "Reference" "#PWR0532"
 			(at 190.5 29.21 0)
 			(hide yes)
 			(show_name no)
@@ -10820,7 +10820,7 @@
 		(instances
 			(project "pulsar "
 				(path "/60c284f0-e6d7-47fc-9b46-38b478ecbf26/80956d0d-0521-4a41-bffb-11a8f02bc21e/c6b8ec7d-4f82-4661-805c-6315d4ccf434"
-					(reference "#PWR085")
+					(reference "#PWR0532")
 					(unit 1)
 				)
 			)
@@ -10838,7 +10838,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "350016a2-bd2b-42a0-9556-f06f9ee29cbc")
-		(property "Reference" "#PWR01"
+		(property "Reference" "#PWR0508"
 			(at 76.2 31.75 0)
 			(hide yes)
 			(show_name no)
@@ -10899,7 +10899,7 @@
 		(instances
 			(project "pulsar "
 				(path "/60c284f0-e6d7-47fc-9b46-38b478ecbf26/80956d0d-0521-4a41-bffb-11a8f02bc21e/c6b8ec7d-4f82-4661-805c-6315d4ccf434"
-					(reference "#PWR01")
+					(reference "#PWR0508")
 					(unit 1)
 				)
 			)
@@ -10917,7 +10917,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "3ee200ec-df10-4217-8230-f72a4812ede8")
-		(property "Reference" "#PWR087"
+		(property "Reference" "#PWR0531"
 			(at 86.36 146.05 0)
 			(hide yes)
 			(show_name no)
@@ -10978,7 +10978,7 @@
 		(instances
 			(project "pulsar "
 				(path "/60c284f0-e6d7-47fc-9b46-38b478ecbf26/80956d0d-0521-4a41-bffb-11a8f02bc21e/c6b8ec7d-4f82-4661-805c-6315d4ccf434"
-					(reference "#PWR087")
+					(reference "#PWR0531")
 					(unit 1)
 				)
 			)
@@ -10996,7 +10996,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "4d4f8265-5686-4994-9f22-057c2351b318")
-		(property "Reference" "#PWR055"
+		(property "Reference" "#PWR0525"
 			(at 76.2 115.57 0)
 			(hide yes)
 			(show_name no)
@@ -11057,7 +11057,7 @@
 		(instances
 			(project "pulsar "
 				(path "/60c284f0-e6d7-47fc-9b46-38b478ecbf26/80956d0d-0521-4a41-bffb-11a8f02bc21e/c6b8ec7d-4f82-4661-805c-6315d4ccf434"
-					(reference "#PWR055")
+					(reference "#PWR0525")
 					(unit 1)
 				)
 			)
@@ -11075,7 +11075,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "4ddc06ad-3933-4aa9-92fb-b6eb5094b992")
-		(property "Reference" "#PWR091"
+		(property "Reference" "#PWR0539"
 			(at 200.66 72.39 0)
 			(hide yes)
 			(show_name no)
@@ -11136,7 +11136,7 @@
 		(instances
 			(project "pulsar "
 				(path "/60c284f0-e6d7-47fc-9b46-38b478ecbf26/80956d0d-0521-4a41-bffb-11a8f02bc21e/c6b8ec7d-4f82-4661-805c-6315d4ccf434"
-					(reference "#PWR091")
+					(reference "#PWR0539")
 					(unit 1)
 				)
 			)
@@ -11154,7 +11154,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "53c50c99-5d8f-4a01-8b0e-28741d107940")
-		(property "Reference" "#PWR059"
+		(property "Reference" "#PWR0530"
 			(at 76.2 140.97 0)
 			(hide yes)
 			(show_name no)
@@ -11215,7 +11215,7 @@
 		(instances
 			(project "pulsar "
 				(path "/60c284f0-e6d7-47fc-9b46-38b478ecbf26/80956d0d-0521-4a41-bffb-11a8f02bc21e/c6b8ec7d-4f82-4661-805c-6315d4ccf434"
-					(reference "#PWR059")
+					(reference "#PWR0530")
 					(unit 1)
 				)
 			)
@@ -11233,7 +11233,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "585bd8f0-8d45-40ac-96b5-59f4a8cba5c2")
-		(property "Reference" "#PWR075"
+		(property "Reference" "#PWR0519"
 			(at 86.36 82.55 0)
 			(hide yes)
 			(show_name no)
@@ -11294,7 +11294,7 @@
 		(instances
 			(project "pulsar "
 				(path "/60c284f0-e6d7-47fc-9b46-38b478ecbf26/80956d0d-0521-4a41-bffb-11a8f02bc21e/c6b8ec7d-4f82-4661-805c-6315d4ccf434"
-					(reference "#PWR075")
+					(reference "#PWR0519")
 					(unit 1)
 				)
 			)
@@ -11312,7 +11312,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "5c544b0c-d2fd-48c6-aba4-cbaaba6aeb2e")
-		(property "Reference" "#PWR069"
+		(property "Reference" "#PWR0537"
 			(at 200.66 57.15 0)
 			(hide yes)
 			(show_name no)
@@ -11373,7 +11373,7 @@
 		(instances
 			(project "pulsar "
 				(path "/60c284f0-e6d7-47fc-9b46-38b478ecbf26/80956d0d-0521-4a41-bffb-11a8f02bc21e/c6b8ec7d-4f82-4661-805c-6315d4ccf434"
-					(reference "#PWR069")
+					(reference "#PWR0537")
 					(unit 1)
 				)
 			)
@@ -11391,7 +11391,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "5e0c9e65-44c8-447f-b552-2ecb45fa2744")
-		(property "Reference" "#PWR086"
+		(property "Reference" "#PWR0517"
 			(at 86.36 74.93 0)
 			(hide yes)
 			(show_name no)
@@ -11452,7 +11452,7 @@
 		(instances
 			(project "pulsar "
 				(path "/60c284f0-e6d7-47fc-9b46-38b478ecbf26/80956d0d-0521-4a41-bffb-11a8f02bc21e/c6b8ec7d-4f82-4661-805c-6315d4ccf434"
-					(reference "#PWR086")
+					(reference "#PWR0517")
 					(unit 1)
 				)
 			)
@@ -11470,7 +11470,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "5f6def8c-fcb8-44a2-b551-baaaf8d8c8ca")
-		(property "Reference" "#PWR077"
+		(property "Reference" "#PWR0524"
 			(at 86.36 110.49 0)
 			(hide yes)
 			(show_name no)
@@ -11531,7 +11531,7 @@
 		(instances
 			(project "pulsar "
 				(path "/60c284f0-e6d7-47fc-9b46-38b478ecbf26/80956d0d-0521-4a41-bffb-11a8f02bc21e/c6b8ec7d-4f82-4661-805c-6315d4ccf434"
-					(reference "#PWR077")
+					(reference "#PWR0524")
 					(unit 1)
 				)
 			)
@@ -11549,7 +11549,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "60f4aee3-0173-4258-b49b-5ed19c3cdf53")
-		(property "Reference" "U7"
+		(property "Reference" "U1"
 			(at 138.43 19.05 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -11569,7 +11569,7 @@
 				)
 			)
 		)
-		(property "Footprint" "FB484/FGB484/FGB484Artix-7_AMD"
+		(property "Footprint" "XC7A200T:XC7A200T_FBG484"
 			(at 82.55 29.21 0)
 			(hide yes)
 			(show_name no)
@@ -13059,7 +13059,7 @@
 		(instances
 			(project "pulsar "
 				(path "/60c284f0-e6d7-47fc-9b46-38b478ecbf26/80956d0d-0521-4a41-bffb-11a8f02bc21e/c6b8ec7d-4f82-4661-805c-6315d4ccf434"
-					(reference "U7")
+					(reference "U90")
 					(unit 1)
 				)
 			)
@@ -13077,7 +13077,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "613f4d7f-386d-4f55-a7d9-b6de25b62baf")
-		(property "Reference" "#PWR082"
+		(property "Reference" "#PWR0540"
 			(at 190.5 74.93 0)
 			(hide yes)
 			(show_name no)
@@ -13138,7 +13138,7 @@
 		(instances
 			(project "pulsar "
 				(path "/60c284f0-e6d7-47fc-9b46-38b478ecbf26/80956d0d-0521-4a41-bffb-11a8f02bc21e/c6b8ec7d-4f82-4661-805c-6315d4ccf434"
-					(reference "#PWR082")
+					(reference "#PWR0540")
 					(unit 1)
 				)
 			)
@@ -13156,7 +13156,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "61de3732-943f-431a-b372-d80372b7c6e9")
-		(property "Reference" "#PWR068"
+		(property "Reference" "#PWR0542"
 			(at 200.66 92.71 0)
 			(hide yes)
 			(show_name no)
@@ -13217,7 +13217,7 @@
 		(instances
 			(project "pulsar "
 				(path "/60c284f0-e6d7-47fc-9b46-38b478ecbf26/80956d0d-0521-4a41-bffb-11a8f02bc21e/c6b8ec7d-4f82-4661-805c-6315d4ccf434"
-					(reference "#PWR068")
+					(reference "#PWR0542")
 					(unit 1)
 				)
 			)
@@ -13235,7 +13235,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "777e8add-5458-4973-aa12-27bf74e25f34")
-		(property "Reference" "#PWR02"
+		(property "Reference" "#PWR0509"
 			(at 76.2 34.29 0)
 			(hide yes)
 			(show_name no)
@@ -13296,7 +13296,7 @@
 		(instances
 			(project "pulsar "
 				(path "/60c284f0-e6d7-47fc-9b46-38b478ecbf26/80956d0d-0521-4a41-bffb-11a8f02bc21e/c6b8ec7d-4f82-4661-805c-6315d4ccf434"
-					(reference "#PWR02")
+					(reference "#PWR0509")
 					(unit 1)
 				)
 			)
@@ -13314,7 +13314,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "7a321168-407f-4104-b1df-c614aa0f73be")
-		(property "Reference" "#PWR078"
+		(property "Reference" "#PWR0529"
 			(at 86.36 138.43 0)
 			(hide yes)
 			(show_name no)
@@ -13375,7 +13375,7 @@
 		(instances
 			(project "pulsar "
 				(path "/60c284f0-e6d7-47fc-9b46-38b478ecbf26/80956d0d-0521-4a41-bffb-11a8f02bc21e/c6b8ec7d-4f82-4661-805c-6315d4ccf434"
-					(reference "#PWR078")
+					(reference "#PWR0529")
 					(unit 1)
 				)
 			)
@@ -13393,7 +13393,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "8c85d4b9-5587-4c72-800f-e0771d4231be")
-		(property "Reference" "#PWR089"
+		(property "Reference" "#PWR0541"
 			(at 190.5 85.09 0)
 			(hide yes)
 			(show_name no)
@@ -13454,7 +13454,7 @@
 		(instances
 			(project "pulsar "
 				(path "/60c284f0-e6d7-47fc-9b46-38b478ecbf26/80956d0d-0521-4a41-bffb-11a8f02bc21e/c6b8ec7d-4f82-4661-805c-6315d4ccf434"
-					(reference "#PWR089")
+					(reference "#PWR0541")
 					(unit 1)
 				)
 			)
@@ -13472,7 +13472,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "8da6145b-b14c-4dc8-b907-ba8d6921e352")
-		(property "Reference" "#PWR083"
+		(property "Reference" "#PWR0538"
 			(at 190.5 69.85 0)
 			(hide yes)
 			(show_name no)
@@ -13533,7 +13533,7 @@
 		(instances
 			(project "pulsar "
 				(path "/60c284f0-e6d7-47fc-9b46-38b478ecbf26/80956d0d-0521-4a41-bffb-11a8f02bc21e/c6b8ec7d-4f82-4661-805c-6315d4ccf434"
-					(reference "#PWR083")
+					(reference "#PWR0538")
 					(unit 1)
 				)
 			)
@@ -13551,7 +13551,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "8f6128a2-9fa3-4f41-9e86-1717bd8ddbfc")
-		(property "Reference" "#PWR066"
+		(property "Reference" "#PWR0546"
 			(at 200.66 113.03 0)
 			(hide yes)
 			(show_name no)
@@ -13612,7 +13612,7 @@
 		(instances
 			(project "pulsar "
 				(path "/60c284f0-e6d7-47fc-9b46-38b478ecbf26/80956d0d-0521-4a41-bffb-11a8f02bc21e/c6b8ec7d-4f82-4661-805c-6315d4ccf434"
-					(reference "#PWR066")
+					(reference "#PWR0546")
 					(unit 1)
 				)
 			)
@@ -13630,7 +13630,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "926bf316-0277-4b99-93d3-2b988826b21b")
-		(property "Reference" "#PWR071"
+		(property "Reference" "#PWR0533"
 			(at 200.66 41.91 0)
 			(hide yes)
 			(show_name no)
@@ -13691,7 +13691,7 @@
 		(instances
 			(project "pulsar "
 				(path "/60c284f0-e6d7-47fc-9b46-38b478ecbf26/80956d0d-0521-4a41-bffb-11a8f02bc21e/c6b8ec7d-4f82-4661-805c-6315d4ccf434"
-					(reference "#PWR071")
+					(reference "#PWR0533")
 					(unit 1)
 				)
 			)
@@ -13709,7 +13709,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "9a0cb56d-47bc-4f74-bc5e-23faa4997a1e")
-		(property "Reference" "#PWR076"
+		(property "Reference" "#PWR0521"
 			(at 86.36 92.71 0)
 			(hide yes)
 			(show_name no)
@@ -13770,7 +13770,7 @@
 		(instances
 			(project "pulsar "
 				(path "/60c284f0-e6d7-47fc-9b46-38b478ecbf26/80956d0d-0521-4a41-bffb-11a8f02bc21e/c6b8ec7d-4f82-4661-805c-6315d4ccf434"
-					(reference "#PWR076")
+					(reference "#PWR0521")
 					(unit 1)
 				)
 			)
@@ -13788,7 +13788,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "9ec8f884-6239-4cde-8466-d03132c1eb2a")
-		(property "Reference" "#PWR084"
+		(property "Reference" "#PWR0535"
 			(at 190.5 49.53 0)
 			(hide yes)
 			(show_name no)
@@ -13849,7 +13849,7 @@
 		(instances
 			(project "pulsar "
 				(path "/60c284f0-e6d7-47fc-9b46-38b478ecbf26/80956d0d-0521-4a41-bffb-11a8f02bc21e/c6b8ec7d-4f82-4661-805c-6315d4ccf434"
-					(reference "#PWR084")
+					(reference "#PWR0535")
 					(unit 1)
 				)
 			)
@@ -13867,7 +13867,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "a2272f62-325f-44cf-a1b7-bd27abf13c31")
-		(property "Reference" "#PWR080"
+		(property "Reference" "#PWR0552"
 			(at 190.5 138.43 0)
 			(hide yes)
 			(show_name no)
@@ -13928,7 +13928,7 @@
 		(instances
 			(project "pulsar "
 				(path "/60c284f0-e6d7-47fc-9b46-38b478ecbf26/80956d0d-0521-4a41-bffb-11a8f02bc21e/c6b8ec7d-4f82-4661-805c-6315d4ccf434"
-					(reference "#PWR080")
+					(reference "#PWR0552")
 					(unit 1)
 				)
 			)
@@ -13946,7 +13946,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "a3a9ce12-cc1e-49ba-a973-531eea234152")
-		(property "Reference" "#PWR081"
+		(property "Reference" "#PWR0543"
 			(at 190.5 95.25 0)
 			(hide yes)
 			(show_name no)
@@ -14007,7 +14007,7 @@
 		(instances
 			(project "pulsar "
 				(path "/60c284f0-e6d7-47fc-9b46-38b478ecbf26/80956d0d-0521-4a41-bffb-11a8f02bc21e/c6b8ec7d-4f82-4661-805c-6315d4ccf434"
-					(reference "#PWR081")
+					(reference "#PWR0543")
 					(unit 1)
 				)
 			)
@@ -14025,7 +14025,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "a5c3b8ff-df8f-46b9-99d7-c42b198ce4f4")
-		(property "Reference" "#PWR030"
+		(property "Reference" "#PWR0513"
 			(at 76.2 57.15 0)
 			(hide yes)
 			(show_name no)
@@ -14086,7 +14086,7 @@
 		(instances
 			(project "pulsar "
 				(path "/60c284f0-e6d7-47fc-9b46-38b478ecbf26/80956d0d-0521-4a41-bffb-11a8f02bc21e/c6b8ec7d-4f82-4661-805c-6315d4ccf434"
-					(reference "#PWR030")
+					(reference "#PWR0513")
 					(unit 1)
 				)
 			)
@@ -14104,7 +14104,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "a9c6c444-b81a-4e97-a1b8-82b955609c4c")
-		(property "Reference" "#PWR079"
+		(property "Reference" "#PWR0553"
 			(at 190.5 143.51 0)
 			(hide yes)
 			(show_name no)
@@ -14165,7 +14165,7 @@
 		(instances
 			(project "pulsar "
 				(path "/60c284f0-e6d7-47fc-9b46-38b478ecbf26/80956d0d-0521-4a41-bffb-11a8f02bc21e/c6b8ec7d-4f82-4661-805c-6315d4ccf434"
-					(reference "#PWR079")
+					(reference "#PWR0553")
 					(unit 1)
 				)
 			)
@@ -14183,7 +14183,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "aa88913a-0b23-4951-96e3-c736c1c921a7")
-		(property "Reference" "#PWR072"
+		(property "Reference" "#PWR0514"
 			(at 86.36 62.23 0)
 			(hide yes)
 			(show_name no)
@@ -14244,7 +14244,7 @@
 		(instances
 			(project "pulsar "
 				(path "/60c284f0-e6d7-47fc-9b46-38b478ecbf26/80956d0d-0521-4a41-bffb-11a8f02bc21e/c6b8ec7d-4f82-4661-805c-6315d4ccf434"
-					(reference "#PWR072")
+					(reference "#PWR0514")
 					(unit 1)
 				)
 			)
@@ -14262,7 +14262,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "afee9aee-11c6-4cc1-94c7-346d7899b05e")
-		(property "Reference" "#PWR04"
+		(property "Reference" "#PWR0510"
 			(at 76.2 39.37 0)
 			(hide yes)
 			(show_name no)
@@ -14323,7 +14323,7 @@
 		(instances
 			(project "pulsar "
 				(path "/60c284f0-e6d7-47fc-9b46-38b478ecbf26/80956d0d-0521-4a41-bffb-11a8f02bc21e/c6b8ec7d-4f82-4661-805c-6315d4ccf434"
-					(reference "#PWR04")
+					(reference "#PWR0510")
 					(unit 1)
 				)
 			)
@@ -14341,7 +14341,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "b56a3935-f33d-4867-b73e-2583f24f93f6")
-		(property "Reference" "#PWR062"
+		(property "Reference" "#PWR0550"
 			(at 200.66 123.19 0)
 			(hide yes)
 			(show_name no)
@@ -14402,7 +14402,7 @@
 		(instances
 			(project "pulsar "
 				(path "/60c284f0-e6d7-47fc-9b46-38b478ecbf26/80956d0d-0521-4a41-bffb-11a8f02bc21e/c6b8ec7d-4f82-4661-805c-6315d4ccf434"
-					(reference "#PWR062")
+					(reference "#PWR0550")
 					(unit 1)
 				)
 			)
@@ -14420,7 +14420,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "be6d570b-4490-4859-997b-643997f60daf")
-		(property "Reference" "#PWR05"
+		(property "Reference" "#PWR0511"
 			(at 76.2 44.45 0)
 			(hide yes)
 			(show_name no)
@@ -14481,7 +14481,7 @@
 		(instances
 			(project "pulsar "
 				(path "/60c284f0-e6d7-47fc-9b46-38b478ecbf26/80956d0d-0521-4a41-bffb-11a8f02bc21e/c6b8ec7d-4f82-4661-805c-6315d4ccf434"
-					(reference "#PWR05")
+					(reference "#PWR0511")
 					(unit 1)
 				)
 			)
@@ -14499,7 +14499,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "c6eb7fff-4fc2-4547-a1c1-053f7754c1cc")
-		(property "Reference" "#PWR060"
+		(property "Reference" "#PWR0554"
 			(at 200.66 148.59 0)
 			(hide yes)
 			(show_name no)
@@ -14560,7 +14560,7 @@
 		(instances
 			(project "pulsar "
 				(path "/60c284f0-e6d7-47fc-9b46-38b478ecbf26/80956d0d-0521-4a41-bffb-11a8f02bc21e/c6b8ec7d-4f82-4661-805c-6315d4ccf434"
-					(reference "#PWR060")
+					(reference "#PWR0554")
 					(unit 1)
 				)
 			)
@@ -14578,7 +14578,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "ca6bc6d4-a84b-414b-ba33-64af62fa68d7")
-		(property "Reference" "#PWR065"
+		(property "Reference" "#PWR0547"
 			(at 200.66 115.57 0)
 			(hide yes)
 			(show_name no)
@@ -14639,7 +14639,7 @@
 		(instances
 			(project "pulsar "
 				(path "/60c284f0-e6d7-47fc-9b46-38b478ecbf26/80956d0d-0521-4a41-bffb-11a8f02bc21e/c6b8ec7d-4f82-4661-805c-6315d4ccf434"
-					(reference "#PWR065")
+					(reference "#PWR0547")
 					(unit 1)
 				)
 			)
@@ -14657,7 +14657,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "cba5cffc-6901-45a5-8734-552f6d96e8ab")
-		(property "Reference" "#PWR061"
+		(property "Reference" "#PWR0551"
 			(at 200.66 125.73 0)
 			(hide yes)
 			(show_name no)
@@ -14718,7 +14718,7 @@
 		(instances
 			(project "pulsar "
 				(path "/60c284f0-e6d7-47fc-9b46-38b478ecbf26/80956d0d-0521-4a41-bffb-11a8f02bc21e/c6b8ec7d-4f82-4661-805c-6315d4ccf434"
-					(reference "#PWR061")
+					(reference "#PWR0551")
 					(unit 1)
 				)
 			)
@@ -14736,7 +14736,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "d6e300ec-0040-41d1-ae6f-48678efa5f8e")
-		(property "Reference" "#PWR088"
+		(property "Reference" "#PWR0545"
 			(at 190.5 100.33 0)
 			(hide yes)
 			(show_name no)
@@ -14797,7 +14797,7 @@
 		(instances
 			(project "pulsar "
 				(path "/60c284f0-e6d7-47fc-9b46-38b478ecbf26/80956d0d-0521-4a41-bffb-11a8f02bc21e/c6b8ec7d-4f82-4661-805c-6315d4ccf434"
-					(reference "#PWR088")
+					(reference "#PWR0545")
 					(unit 1)
 				)
 			)
@@ -14815,7 +14815,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "ee6a3ba8-d4d4-4876-9553-33aa83005e83")
-		(property "Reference" "#PWR052"
+		(property "Reference" "#PWR0520"
 			(at 76.2 87.63 0)
 			(hide yes)
 			(show_name no)
@@ -14876,7 +14876,7 @@
 		(instances
 			(project "pulsar "
 				(path "/60c284f0-e6d7-47fc-9b46-38b478ecbf26/80956d0d-0521-4a41-bffb-11a8f02bc21e/c6b8ec7d-4f82-4661-805c-6315d4ccf434"
-					(reference "#PWR052")
+					(reference "#PWR0520")
 					(unit 1)
 				)
 			)
@@ -14894,7 +14894,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "fc49d913-8a4d-40d1-b1f1-06ec513cfc55")
-		(property "Reference" "#PWR053"
+		(property "Reference" "#PWR0522"
 			(at 76.2 102.87 0)
 			(hide yes)
 			(show_name no)
@@ -14955,306 +14955,10 @@
 		(instances
 			(project "pulsar "
 				(path "/60c284f0-e6d7-47fc-9b46-38b478ecbf26/80956d0d-0521-4a41-bffb-11a8f02bc21e/c6b8ec7d-4f82-4661-805c-6315d4ccf434"
-					(reference "#PWR053")
+					(reference "#PWR0522")
 					(unit 1)
 				)
 			)
 		)
 	)
-)
-	; R21 IO_L2N_T0_D03_14 bank14
-	(label "FLASH_MOSI"
-		(at 82.55 36.83 0)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left bottom)
-		)
-		(uuid "d27f3ca7-d3bd-46ca-920b-d9e02f83d9e1")
-	)
-	; T19 IO_L6P_T0_FCS_B_14 bank14
-	(label "FLASH_CS"
-		(at 82.55 64.77 0)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left bottom)
-		)
-		(uuid "7de30746-e5a2-425c-910b-ef743de61773")
-	)
-	; T21 IO_L4P_T0_D04_14 bank14
-	(label "FLASH_SCK"
-		(at 82.55 69.85 0)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left bottom)
-		)
-		(uuid "779f606d-c14b-4a55-b9d8-136daf19571a")
-	)
-	; U18 IO_L18N_T2_A11_D27_14 bank14
-	(label "FLASH_MISO"
-		(at 82.55 95.25 0)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left bottom)
-		)
-		(uuid "2d14d9de-b70c-48c9-b2d3-ceec55da9c58")
-	)
-	; M6 IO_L23P_T3_35 bank35
-	(label "USB_DP"
-		(at 82.55 46.99 0)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left bottom)
-		)
-		(uuid "c0f5e873-8e08-4872-add3-5d456aaf5600")
-	)
-	; N2 IO_L22N_T3_35 bank35
-	(label "USB_DN"
-		(at 82.55 59.69 0)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left bottom)
-		)
-		(uuid "77de7212-122d-4af0-ac0e-8f1aee4d58f5")
-	)
-	; P5 IO_L21P_T3_DQS_35 bank35
-	(label "FIDO2_SDA"
-		(at 82.55 90.17 0)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left bottom)
-		)
-		(uuid "b455f684-ece2-4ff1-a4eb-e99f3e469fa0")
-	)
-	; B15/J21 bank16/15
-	(label "FIDO2_SCL"
-		(at 82.55 85.09 0)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left bottom)
-		)
-		(uuid "f9c8eb4c-67ad-4447-a333-21ff85ee8013")
-	)
-	; R3 IO_L3P_T0_DQS_34 bank34
-	(label "LED_R"
-		(at 82.55 107.95 0)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left bottom)
-		)
-		(uuid "b9a273c9-3d64-40ec-a164-6a216c0efdca")
-	)
-	; C13 IO_L8P_T1_16 bank16
-	(label "LED_G"
-		(at 82.55 113.03 0)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left bottom)
-		)
-		(uuid "ce6019cf-7f4f-4847-bc25-ecb9b9a2b55e")
-	)
-	; N12 PROGRAM_B_0 dedicated
-	(label "FPGA_RESET"
-		(at 209.55 107.95 180)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left bottom)
-		)
-		(uuid "bd0f249a-4fed-40f2-80db-39ce053afe7a")
-	)
-	; T4 IO_L13N_T2_MRCC_34 bank34
-	(label "PWR_GOOD"
-		(at 82.55 133.35 0)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left bottom)
-		)
-		(uuid "927aecb3-5ede-43f5-bac1-726a9a7ddfa3")
-	)
-	; H17 IO_L6P_T0_15 bank15
-	(label "MUX1_SEL0"
-		(at 82.55 41.91 0)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left bottom)
-		)
-		(uuid "a6de19cf-3825-4747-b3fa-ca036ca5be66")
-	)
-	; C15/K21/V14 bank16/15/13
-	(label "MUX1_SEL1"
-		(at 82.55 118.11 0)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left bottom)
-		)
-		(uuid "92dfa446-0c4e-4f19-ad8c-7bd2af7ed718")
-	)
-	; A15/G17 bank16/15
-	(label "MUX1_SEL2"
-		(at 184.15 49.53 180)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left bottom)
-		)
-		(uuid "05f8d35b-74ad-4122-b86f-676c0891fd10")
-	)
-	; A14/G16 bank16/15
-	(label "MUX1_SEL3"
-		(at 184.15 52.07 180)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left bottom)
-		)
-		(uuid "b84fad00-bc47-46e1-ab51-4c15d97ea56b")
-	)
-	; AA1 IO_L7P_T1_34 bank34
-	(label "MUX2_SEL0"
-		(at 184.15 29.21 180)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left bottom)
-		)
-		(uuid "0650bde9-c79f-46c1-987c-0804d05e0c44")
-	)
-	; A21/G22 bank16
-	(label "MUX2_SEL1"
-		(at 184.15 34.29 180)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left bottom)
-		)
-		(uuid "bdba05d5-3c7f-472b-8a1e-77d9712b319d")
-	)
-	; A20/G21 bank16
-	(label "MUX2_SEL2"
-		(at 184.15 36.83 180)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left bottom)
-		)
-		(uuid "adfc3ef4-745b-45db-9ccc-2a0bb31eca0b")
-	)
-	; A19/G20 bank16/15
-	(label "MUX2_SEL3"
-		(at 184.15 39.37 180)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left bottom)
-		)
-		(uuid "73b605a9-8298-4724-95dd-70e1e7c4c1b9")
-	)
-	; A18/G19 bank16
-	(label "MUX3_SEL0"
-		(at 184.15 41.91 180)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left bottom)
-		)
-		(uuid "9670f58a-4d5d-47b6-879c-559b7dc6de83")
-	)
-	; A16/G18 bank16/15
-	(label "MUX3_SEL1"
-		(at 184.15 44.45 180)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left bottom)
-		)
-		(uuid "a8dce980-9463-4186-b733-6a77ed10275c")
-	)
-	; A15 bank16
-	(label "MUX3_SEL2"
-		(at 184.15 46.99 180)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left bottom)
-		)
-		(uuid "c37c3c0e-8c00-46a0-9a6d-a0a8af8551f1")
-	)
-	; L1 IO_L15N_T2_DQS_35 bank35
-	(label "MUX3_SEL3"
-		(at 194.31 44.45 180)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left bottom)
-		)
-		(uuid "f9f58f98-0e9f-404c-91b8-cd1f2757b62e")
-	)
-	; Y7/F21 Bank34+16 — ADC4 SPI clock
-	(label "ADC4_SCK"
-		(at 184.15 69.85 180)
-		(effects (font (size 1.27 1.27)) (justify left bottom))
-		(uuid "6e2c1f5c-e540-46b2-ad81-9a4f6468c669")
-	)
-	; W4/E22 Bank34+16 — ADC2 SPI data in
-	(label "ADC2_SDI"
-		(at 184.15 100.33 180)
-		(effects (font (size 1.27 1.27)) (justify left bottom))
-		(uuid "4d10e7cc-8d2c-43d2-8c1f-02210f9bca00")
-	)
-	; Y19 IO_L13N_T2_MRCC_14 — 50MHz crystal main clock
-	(label "CLK_50M"
-		(at 214.63 102.87 180)
-		(effects (font (size 1.27 1.27)) (justify left bottom))
-		(uuid "da7a9242-6cea-4a07-8380-776738188d3b")
-	)
-	; Y18 IO_L13P_T2_MRCC_14 — 48MHz crystal USB clock
-	(label "CLK_48M"
-		(at 214.63 105.41 180)
-		(effects (font (size 1.27 1.27)) (justify left bottom))
-		(uuid "0d102a8f-55b9-4b80-8a45-a7152c52cde6")
-	)
-
-	(sheet_instances
-		(path "/"
-			(page "8")
-		)
-	)
-	(embedded_fonts no)
 )

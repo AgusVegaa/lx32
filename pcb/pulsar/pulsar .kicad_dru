@@ -1,9 +1,26 @@
 (version 1)
 
 (rule "Default"
-  (constraint clearance (min 0.1mm))
-  (constraint track_width (min 0.15mm))
-  (constraint via_diameter (min 0.4mm))
-  (constraint hole_size (min 0.2mm))
-  (constraint annular_width (min 0.1mm))
+  (constraint clearance (min 0.09mm))
+  (constraint track_width (min 0.09mm))
+  (constraint via_diameter (min 0.3mm))
+  (constraint hole_size (min 0.15mm))
+  (constraint annular_width (min 0.075mm))
+)
+
+(rule "USB_Signals"
+  (condition "A.Net == 'USB_DP_RAW' || A.Net == 'USB_DM_RAW'")
+  (constraint clearance (min 0.12mm))
+  (constraint track_width (min 0.15mm) (opt 0.17mm))
+)
+
+(rule "Power_Nets"
+  (condition "A.Net == 'GND' || A.Net == '+3V3' || A.Net == '+1V0' || A.Net == '+1V8' || A.Net == '+1V0_MGT'")
+  (constraint clearance (min 0.2mm))
+  (constraint track_width (min 0.3mm))
+)
+
+(rule "ISO_Creepage"
+  (condition "A.Net == 'FIDO2_SCL' || A.Net == 'FIDO2_SDA'")
+  (constraint clearance (min 0.5mm))
 )
