@@ -29,22 +29,26 @@
 |------|-----------|-----|---------|
 | F.Cu | signal | Señales top + GND pour | GND zone fill ✅ |
 | In1.Cu | **power** | Plano GND | GND fill ✅ |
-| In2.Cu | signal | Señales internas (HALL, SRAM addr) | Sin routing |
-| In3.Cu | **power** | Plano +1V0 (VCCint FPGA) | +1V0 fill ✅ |
+| In2.Cu | signal | **Analógico HALL** (blindado GND: In1 ↑ + In3 ↓) | Sin routing |
+| In3.Cu | **power** | Plano GND (referencia analógica de In2) | GND fill ⚠️ re-pour |
 | In4.Cu | signal | Señales internas (SRAM data) | Sin routing |
 | In5.Cu | **power** | Plano +1V8 (VCCaux FPGA) | +1V8 fill ✅ |
 | In6.Cu | signal | Señales internas (ADC SPI) | Sin routing |
 | In7.Cu | **power** | Plano GND (refuerzo bajo FPGA) | GND fill ✅ |
-| In8.Cu | **power** | Plano GND (digital) | GND fill ✅ |
-| In9.Cu | signal | Señales internas (MUX, misc) | Sin routing |
+| In8.Cu | **power** | Plano +1V0 (VCCint FPGA) | +1V0 fill ⚠️ re-pour |
+| In9.Cu | signal | Señales internas (MUX, misc) — ref. +1V0 (In8) | Sin routing |
 | In10.Cu | **power** | Plano +1V0_MGT (FPGA GTX) | +1V0_MGT fill ✅ |
 | In11.Cu | signal | Señales internas (FPGA IO misc) | Sin routing |
 | In12.Cu | **power** | Plano +3V3 (lógica periférica) | +3V3 fill ✅ |
 | In13.Cu | signal | Señales internas (I2C, SPI, FIDO2) | Sin routing |
-| In14.Cu | **power** | Plano GND (analógico) | GND fill ✅ |
+| In14.Cu | **power** | Plano GND (bottom) | GND fill ✅ |
 | B.Cu | signal | Señales bottom + GND pour | GND zone fill ✅ |
 
 > **Capas de señal disponibles:** F.Cu, In2, In4, In6, In9, In11, In13, B.Cu (8 capas de señal)
+
+> **⚠️ Cambio de stackup (rev. analógica):** Se intercambió **In3** (antes +1V0) ↔ **In8** (antes GND).
+> Motivo: In2 está acoplado por prepreg de 0.09 mm a In3; con +1V0 ahí, la señal analógica HALL referenciaba el núcleo ruidoso del FPGA (VCCINT). Ahora **In3 = GND**, dejando In2 con blindaje GND por ambas caras (In1↑ + In3↓) — el blindaje analógico que pedía el Routing Plan original. VCCINT pasa a **In8**, que queda adyacente a In7 (GND) → mejor desacoplo de plano. Único costo: In9 (MUX/misc digital) ahora referencia +1V0 (aceptable).
+> **Acción requerida en KiCad:** *Edit → Fill All Zones* (`B`) para re-rellenar In3 e In8 con sus nuevos nets antes de generar gerbers.
 
 ---
 
@@ -71,9 +75,9 @@ Via constraints (Default):
 ### Power Nets (9) — servidas por planos, solo necesitan vías de stitching
 | Net | Plano | Pads |
 |-----|-------|------|
-| GND | F.Cu, In1, In7, In8, In14, B.Cu | 544 |
+| GND | F.Cu, In1, In3, In7, In14, B.Cu | 544 |
 | +3V3 | In12.Cu | 210 |
-| +1V0 | In3.Cu | 55 |
+| +1V0 | In8.Cu | 55 |
 | +1V0_MGT | In10.Cu | 25 |
 | +1V8 | In5.Cu | 26 |
 | +1V2_MGT | — (traza) | 17 |
@@ -84,8 +88,8 @@ Via constraints (Default):
 ### Señales a Rutear (150 nets, 556 conexiones)
 
 #### HALL Sensors — 61 nets (HALL0 … HALL60)
-- Fuente: multiplexores U_MUX0–U_MUX3 → FPGA
-- Recomendación: In2.Cu o In4.Cu, trazas 0.10–0.12 mm, grid 0.1 mm
+- Fuente: multiplexores U_MUX0–U_MUX3 (**ADG1606**, precision analog) → FPGA
+- Recomendación: **In2.Cu** (capa analógica blindada GND por In1+In3), trazas 0.10–0.12 mm, grid 0.1 mm
 
 #### SRAM Bus — 44 nets
 - Address: SRAM_A0 … SRAM_A19 (20 líneas)
@@ -93,12 +97,12 @@ Via constraints (Default):
 - Control: SRAM_CE_N, SRAM_CE2_N, SRAM_OE_N, SRAM_WE_N (4 líneas)
 - Recomendación: In4.Cu o In6.Cu, trazas 0.10 mm, longitudes igualadas en grupos
 
-#### ADC SPI — 16 nets
+#### ADC SPI — 16 nets (ADC = **AD7689**, 16-bit 250 kSPS, LFCSP-20)
 - ADC1–4: CNV, SCK, SDI, SDO (×4 canales)
 - ⚠️ Señales críticas de timing — igualar longitudes por canal (±0.5 mm)
 - Recomendación: In6.Cu, trazas 0.12 mm
 
-#### MUX Control — 16 nets
+#### MUX Control — 16 nets (MUX = **ADG1606**, TSSOP-28)
 - MUX0–3: D, EN, OUT (×4 grupos = 12 nets)
 - Shared: MUX_A0, MUX_A1, MUX_A2, MUX_A3 (4 nets)
 - Recomendación: In9.Cu, trazas 0.10 mm

@@ -1,73 +1,89 @@
 
-
 ═══════════════════════════════════════════════════════════════════════
-  ESTADO DEL ROUTING — SESIÓN 3 (2026-05-20)
+  ESTADO DEL ROUTING — SESIÓN 4 · RECONCILIACIÓN (2026-05-20)
 ═══════════════════════════════════════════════════════════════════════
 
-COMPLETADO EN ESTA SESIÓN
-─────────────────────────
-✓ allow_blind_buried_vias yes — habilitado en setup del PCB
-✓ Stackup 16 capas con user_names:
-    F.Cu=TOP_SIGNAL | In1=GND | In2=ANALOG | In3=VCCINT_1V0
-    In4=SIGNAL | In5=VCCAUX_1V8 | In6=SIGNAL | In7=GND_MID
-    In8=GND_MID | In9=SIGNAL | In10=MGT_PWR | In11=SIGNAL
-    In12=3V3_PWR | In13=SIGNAL | In14=GND | B.Cu=BOT_SIGNAL
+  Este documento REEMPLAZA al log de la Sesión 3, que contenía datos
+  que NO coinciden con el archivo "pulsar .kicad_pcb" real. Todos los
+  números de abajo fueron verificados directamente sobre el .kicad_pcb.
 
-✓ Asignación de nets completa:
-    U1 FPGA     : 161 power balls asignados (GND, +1V0, +1V8, +3V3, MGT)
-    U9 SRAM     : 44 pads (SRAM_A0-19, SRAM_D0-15, CE/OE/WE, VCC/GND)
-    U_MUX0-3    : 93 pads (HALL0-60→S1-16, VDD, VSS, A0-3, EN, D)
-    U_BUF0-3    : 20 pads (P1=OUT, P2=GND, P3=IN+sig, P4=IN-fdbk, P5=V+)
-    U_ADC0-7    : 80 pads (REF→+2V5_REF, IN0→MUXx_OUT, IN1-7/COM→GND)
-    U_REF0/1    : pad5/8 → +2V5_REF (corregido de +3V3)
-    U_STM STM32 : 12 pads (VDD, GND, USB, FIDO2_I2C, SWDIO, NRST)
-    60 nuevas redes: MUX_A0-3, MUX0-3_EN/D/OUT, SRAM bus, SWDIO/CLK
+ESTADO REAL DEL PCB (verificado)
+────────────────────────────────
+  Footprints colocados ......... 414            ✓ (coincide)
+  Zonas de cobre (planos) ...... 10             ✓ (coincide)
+  Segmentos de traza ........... 0              ⚠ board limpio
+  Vías ......................... 0              ⚠ board limpio
+  Nets ......................... 159
+  Pads con net ................. 1,541 / 1,850
 
-✓ 10 copper fill zones (power planes):
-    In1.Cu  → GND     In7.Cu  → GND     In8.Cu  → GND     In14.Cu → GND
-    In3.Cu  → +1V0    In5.Cu  → +1V8    In12.Cu → +3V3    In10.Cu → +1V0_MGT
-    F.Cu    → GND (shielding)            B.Cu    → GND (shielding)
+  → El routing está en CERO. Los "236 segmentos / 54 vías / 27%
+    completado" del log de Sesión 3 NO existen en el archivo: existieron
+    en los backups .bak_fix1/.bak_fix2 (00:41–00:47) pero el commit
+    "feat: let everything to route" los ELIMINÓ para rerutear de cero.
+    El estado correcto es el de ROUTING_GUIDE.md: routing PENDIENTE.
 
-✓ 236 segmentos de traza y 54 vías (52 blind, 2 through):
-    USB diff pair : J1 → U10 → U_STM (F.Cu, 0.17mm, blind vias)
-    Flash SPI     : U3 → FPGA stubs (F.Cu → In4.Cu blind vias)
-    Hall VCC/GND  : spines horizontales Row1(y=12.5/15.5) Row2(y=89.5/86.5)
-                    + 122 stubs verticales a cada sensor (B.Cu, 0.15mm)
-    ADC SPI ×4    : FPGA edge → U_ADC0-7 (F.Cu→In9.Cu blind vias, 0.12mm)
+CORRECCIÓN DE STACKUP (aplicada en esta sesión)
+───────────────────────────────────────────────
+  Problema: In2 (capa de señal analógica HALL) está acoplado por prepreg
+  de 0.09 mm a In3. In3 llevaba +1V0 (VCCINT, núcleo ruidoso del FPGA),
+  por lo que el retorno analógico iba sobre una alimentación ruidosa —
+  inaceptable para el ADC de 16 bits.
 
-✓ DRC rules (.kicad_dru) actualizado:
-    Default (JLCPCB 16L): 0.09mm clearance/track, 0.3mm via, 0.15mm drill
-    Blind/Buried vias: 0.35mm dia, 0.2mm drill
-    USB diff pair: 0.17mm track, 0.18mm gap, 0.5mm max uncoupled
-    BGA fanout: 0.09mm clearance, 0.25mm via dia
-    SPI clocks: 0.15mm track, 0.15mm clearance
-    ISO creepage: 0.5mm clearance para FIDO2_SCL/SDA
+  Solución (intercambio de 2 zonas, sin rework porque no hay trazas):
+    In3.Cu :  +1V0  →  GND   (referencia analógica de In2)
+    In8.Cu :  GND   →  +1V0  (VCCINT, ahora adyacente a In7=GND)
 
-PENDIENTE — Requiere KiCad manual o sesión siguiente
-─────────────────────────────────────────────────────
-⚠ FPGA 323 signal balls sin asignar → necesita archivo XDC con pin constraints
-   (HALL_MUX_SEL0-60, ADC_SPI×4, FLASH_SPI, SRAM bus, CLK, USB_DP/DM)
+  Resultado: In2 queda blindado por GND en ambas caras (In1 ↑ + In3 ↓),
+  que es el blindaje analógico que pedía el Routing Plan original.
+  ⚠ ACCIÓN EN KiCad: Edit → Fill All Zones (B) para re-rellenar In3/In8.
 
-⚠ Trazas pendientes de rutear:
-   • Hall analog path: HALL0-60 → R_H → C_H → U_MUX S-pins (In2.Cu ANALOG)
-   • MUX control: MUX_A0-3, MUX0-3_EN → FPGA (In4.Cu SIGNAL)
-   • MUX D output: MUX0-3_D → U_BUF IN+ (In2.Cu ANALOG)
-   • BUF output: MUX0-3_OUT → U_ADC IN0 (In2.Cu ANALOG)
-   • REF output: +2V5_REF → U_ADC REF, U_BUF (In2.Cu ANALOG)
+  Stackup 16 capas resultante:
+    F.Cu=SIGNAL+GND | In1=GND      | In2=ANALOG    | In3=GND
+    In4=SIGNAL      | In5=+1V8     | In6=SIGNAL    | In7=GND
+    In8=+1V0(VCCINT)| In9=SIGNAL   | In10=+1V0_MGT | In11=SIGNAL
+    In12=+3V3       | In13=SIGNAL  | In14=GND      | B.Cu=SIGNAL+GND
+
+  10 zonas de cobre (verificadas):
+    GND  → F.Cu, B.Cu, In1, In3, In7, In14
+    +1V8 → In5      +1V0 → In8      +1V0_MGT → In10      +3V3 → In12
+
+COMPONENTES CLAVE — CONFIRMADOS CONTRA EL PCB
+──────────────────────────────────────────────
+  ADC : AD7689  (16-bit, 250 kSPS, LFCSP-20)  — 108 refs en KiCad ✓
+        (ADS7042 y ADS8688 de otros documentos NO existen en el PCB)
+  MUX : ADG1606 (precision analog, TSSOP-28)  — 60 refs en KiCad ✓
+        (CD74HC4067 del BOM del Routing Plan NO existe en el PCB)
+
+ASIGNACIÓN DE NETS (real, en netlist/footprints)
+─────────────────────────────────────────────────
+  U1 FPGA   : 161 power balls (GND, +1V0, +1V8, +3V3, MGT)
+  U9 SRAM   : 44 pads (SRAM_A0-19, SRAM_D0-15, CE/OE/WE, VCC/GND)
+  U_MUX0-3  : 93 pads (HALL0-60→S1-16, VDD, VSS, A0-3, EN, D) — ADG1606
+  U_BUF0-3  : 20 pads (P1=OUT, P2=GND, P3=IN+sig, P4=IN-fdbk, P5=V+)
+  U_ADC0-7  : 80 pads (REF→+2V5_REF, IN0→MUXx_OUT) — AD7689
+  U_REF0/1  : pad5/8 → +2V5_REF
+  U_STM     : 12 pads (VDD, GND, USB, FIDO2_I2C, SWDIO, NRST)
+
+PENDIENTE (todo el routing — ver ROUTING_GUIDE.md §6)
+──────────────────────────────────────────────────────
+⚠ Re-pour de zonas In3/In8 en KiCad (Fill All Zones)
+⚠ FPGA 323 signal balls sin asignar → archivo XDC con pin constraints
+⚠ Rutear las 556 conexiones (clocks, USB, ADC SPI, SRAM, HALL, etc.)
+   • Hall analog path: HALL0-60 → R_H → C_H → U_MUX S-pins (In2 ANALOG)
+   • MUX control: MUX_A0-3, MUX0-3_EN → FPGA (In9 SIGNAL)
+   • MUX D output: MUX0-3_D → U_BUF IN+ (In2 ANALOG)
+   • BUF output: MUX0-3_OUT → U_ADC IN0 (In2 ANALOG)
+   • REF output: +2V5_REF → U_ADC REF, U_BUF (In2 ANALOG)
    • I2C: ISO1540 ↔ STM32 ↔ ATECC608B (FIDO2_SCL/SDA, I2C_SCL/SDA)
-   • Clocks: CLK_50M, CLK_48M → FPGA (In4.Cu, controlado delay)
-   • Power: +1V0/+1V8/+3V3 regulators → distribution (In3/In5/In12)
-   • SRAM: A0-19, D0-15, CE/OE/WE → FPGA (In9.Cu SIGNAL, via buried)
+   • Clocks: CLK_50M, CLK_48M → FPGA
+   • Power: +1V0/+1V8/+3V3 → distribución (In8/In5/In12)
+   • SRAM: A0-19, D0-15, CE/OE/WE → FPGA
 
-ESTADÍSTICAS FINALES DEL PCB
-────────────────────────────
-  Archivo     : pulsar .kicad_pcb
+ESTADÍSTICAS DEL ARCHIVO .kicad_pcb
+────────────────────────────────────
+  Archivo     : pulsar .kicad_pcb (KiCad 10, gen 20260206)
   Board size  : 292×102mm (2mm corner radius)
-  Capas       : 16 copper + stackup completo
+  Capas       : 16 copper + stackup completo (espesor 2.56mm)
   Componentes : 414 footprints
-  Nets        : 159 nets (99 originales + 60 nuevas)
-  Pads c/net  : 1,541 / 1,850 total
-  Segmentos   : 236
-  Vías        : 54 (52 blind F.Cu↔In4/In9.Cu, 2 through)
-  Zonas cobre : 10
-  Espesor     : 2.56mm (JLCPCB 16L HDI)
+  Nets        : 159
+  Segmentos   : 0      Vías : 0      Zonas cobre : 10
